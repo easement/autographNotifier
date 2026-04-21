@@ -228,6 +228,13 @@
     border-top: 1px solid var(--border); text-transform: uppercase;
   }
 
+  /* ── Sort ── */
+  .th-sort { cursor: pointer; user-select: none; white-space: nowrap; }
+  .th-sort:hover { color: var(--ink); background: var(--paper-2); }
+  .th-sort::after { content: ' ⇅'; opacity: 0.28; font-size: 0.72em; }
+  .th-sort.sort-asc::after  { content: ' ▲'; opacity: 1; color: var(--red); }
+  .th-sort.sort-desc::after { content: ' ▼'; opacity: 1; color: var(--red); }
+
   /* ── Responsive ── */
   @media (max-width: 720px) {
     .td-shop, .td-price { display: none; }
@@ -265,9 +272,9 @@
       <thead>
         <tr>
           <th class="th-thumb"></th>
-          <th>Title / Artist</th>
-          <th>Shop</th>
-          <th>Price</th>
+          <th class="th-sort" data-sort="title">Title / Artist</th>
+          <th class="th-sort" data-sort="shop">Shop</th>
+          <th class="th-sort" data-sort="price">Price</th>
           <th></th>
         </tr>
       </thead>
@@ -8994,11 +9001,25 @@
       </tr></tbody>
     </table>
   </div>
+  <div id="flatView" style="display:none">
+    <table class="listings-table">
+      <thead>
+        <tr>
+          <th class="th-thumb"></th>
+          <th class="th-sort" data-sort="title">Title / Artist</th>
+          <th class="th-sort" data-sort="shop">Shop</th>
+          <th class="th-sort" data-sort="price">Price</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="flatBody"></tbody>
+    </table>
+  </div>
   <div id="searchEmpty" class="search-empty" style="display:none"></div>
 </main>
 
 <footer class="site-footer">
-  Autograph Notifier &nbsp;·&nbsp; Generated April 21, 2026 at 06:29 PM
+  Autograph Notifier &nbsp;·&nbsp; Generated April 21, 2026 at 02:46 PM
 </footer>
 
 <script>
@@ -9008,6 +9029,8 @@
   const searchClear = document.getElementById('searchClear');
   const headerCount = document.getElementById('headerCount');
   const searchEmpty = document.getElementById('searchEmpty');
+  const flatView = document.getElementById('flatView');
+  const flatBody = document.getElementById('flatBody');
   const sections = Array.from(document.querySelectorAll('.date-section'));
   const total = 872;
 
@@ -9015,46 +9038,121 @@
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
+  function rowText(r) {
+    const t = r.querySelector('.title-line');
+    const a = r.querySelector('.td-artist');
+    return ((t ? t.textContent : '') + ' ' + (a ? a.textContent : '')).toLowerCase();
+  }
+
+  function setCount(count, q) {
+    if (!q) {
+      headerCount.textContent = total + ' listings';
+      searchEmpty.style.display = 'none';
+    } else {
+      headerCount.textContent = count + (count === 1 ? ' match' : ' matches');
+      searchEmpty.style.display = count === 0 ? 'block' : 'none';
+      if (count === 0) searchEmpty.innerHTML = 'No results for &ldquo;' + escHtml(q) + '&rdquo;';
+    }
+  }
+
+  // ── Search ──
   function doSearch(query) {
     const q = query.trim().toLowerCase();
     searchClear.classList.toggle('visible', query.length > 0);
 
-    if (!q) {
-      sections.forEach(s => {
-        s.classList.remove('hidden');
-        s.querySelectorAll('tbody tr').forEach(r => r.classList.remove('hidden'));
+    if (sortKey) {
+      let count = 0;
+      flatBody.querySelectorAll('tr').forEach(r => {
+        const match = !q || rowText(r).includes(q);
+        r.classList.toggle('hidden', !match);
+        if (match) count++;
       });
-      headerCount.textContent = total + ' listings';
-      searchEmpty.style.display = 'none';
+      setCount(count, q);
       return;
     }
 
-    let matchCount = 0;
+    let count = 0;
     sections.forEach(s => {
       let hits = 0;
       s.querySelectorAll('tbody tr').forEach(r => {
-        const titleEl = r.querySelector('.title-line');
-        const artistEl = r.querySelector('.td-artist');
-        const text = ((titleEl ? titleEl.textContent : '') + ' ' + (artistEl ? artistEl.textContent : '')).toLowerCase();
-        const match = text.includes(q);
+        const match = !q || rowText(r).includes(q);
         r.classList.toggle('hidden', !match);
         if (match) hits++;
       });
-      matchCount += hits;
-      s.classList.toggle('hidden', hits === 0);
+      count += hits;
+      if (!q) s.classList.remove('hidden');
+      else s.classList.toggle('hidden', hits === 0);
     });
-
-    headerCount.textContent = matchCount + (matchCount === 1 ? ' match' : ' matches');
-    searchEmpty.style.display = matchCount === 0 ? 'block' : 'none';
-    if (matchCount === 0) {
-      searchEmpty.innerHTML = 'No results for &ldquo;' + escHtml(query) + '&rdquo;';
-    }
+    setCount(count, q);
   }
 
   searchInput.addEventListener('input', e => doSearch(e.target.value));
   searchClear.addEventListener('click', () => { searchInput.value = ''; doSearch(''); searchInput.focus(); });
   searchInput.addEventListener('keydown', e => {
     if (e.key === 'Escape') { searchInput.value = ''; doSearch(''); searchInput.blur(); }
+  });
+
+  // ── Sort ──
+  const byHash = Object.fromEntries(LISTINGS.map(l => [l.hash, l]));
+  const rowOrigins = new Map();
+  document.querySelectorAll('.listings-table tbody tr').forEach(r => {
+    rowOrigins.set(r, r.parentNode);
+  });
+  let sortKey = null;
+  let sortDir = 'asc';
+
+  function sortVal(row, key) {
+    const l = byHash[row.dataset.hash];
+    if (!l) return '';
+    if (key === 'price') return parseFloat(String(l.price).replace(/[^0-9.]/g, '')) || 0;
+    if (key === 'title') return (String(l.title) + ' ' + String(l.artist)).toLowerCase();
+    return String(l[key] || '').toLowerCase();
+  }
+
+  function updateSortHeaders() {
+    document.querySelectorAll('.th-sort').forEach(th => {
+      th.classList.remove('sort-asc', 'sort-desc');
+      if (sortKey && th.dataset.sort === sortKey)
+        th.classList.add(sortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+    });
+  }
+
+  function renderSort() {
+    const allRows = Array.from(rowOrigins.keys());
+    allRows.sort((a, b) => {
+      const va = sortVal(a, sortKey), vb = sortVal(b, sortKey);
+      if (typeof va === 'number') return sortDir === 'asc' ? va - vb : vb - va;
+      return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+    });
+    allRows.forEach(r => flatBody.appendChild(r));
+    sections.forEach(s => { s.style.display = 'none'; });
+    flatView.style.display = '';
+    updateSortHeaders();
+    doSearch(searchInput.value);
+  }
+
+  function clearSort() {
+    sortKey = null;
+    sortDir = 'asc';
+    rowOrigins.forEach((parent, r) => parent.appendChild(r));
+    flatView.style.display = 'none';
+    sections.forEach(s => { s.style.display = ''; });
+    updateSortHeaders();
+    doSearch(searchInput.value);
+  }
+
+  document.querySelectorAll('.th-sort').forEach(th => {
+    th.addEventListener('click', () => {
+      const key = th.dataset.sort;
+      if (sortKey === key) {
+        if (sortDir === 'asc') { sortDir = 'desc'; renderSort(); }
+        else clearSort();
+      } else {
+        sortKey = key;
+        sortDir = 'asc';
+        renderSort();
+      }
+    });
   });
 })();
 </script>
