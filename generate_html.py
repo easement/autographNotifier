@@ -3,6 +3,7 @@
 
 import json
 import os
+import re
 from datetime import date, datetime
 from itertools import groupby
 
@@ -23,6 +24,20 @@ _FORMAT_COLORS = {
 }
 
 
+def _parse_db_url(url: str) -> dict:
+    """Parse a postgres URL, extracting credentials without percent-decoding."""
+    m = re.match(
+        r"postgresql(?:\+\w+)?://([^:@]+):(.+)@([^:/]+)(?::(\d+))?/([^?]+)", url
+    )
+    if not m:
+        return {"conninfo": url}
+    user, password, host, port, dbname = m.groups()
+    params = {"user": user, "password": password, "host": host, "dbname": dbname}
+    if port:
+        params["port"] = int(port)
+    return params
+
+
 def get_listings() -> list[dict]:
     import psycopg
     from psycopg.rows import dict_row
@@ -30,7 +45,7 @@ def get_listings() -> list[dict]:
     if not SUPABASE_DB_URL:
         raise RuntimeError("SUPABASE_DB_URL environment variable is not set.")
 
-    conn = psycopg.connect(SUPABASE_DB_URL, row_factory=dict_row)
+    conn = psycopg.connect(**_parse_db_url(SUPABASE_DB_URL), row_factory=dict_row)
     cur = conn.execute(
         """
         SELECT hash, shop, artist, title, format, signed_by, signature_location,
