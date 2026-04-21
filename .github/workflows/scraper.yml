@@ -1,0 +1,64 @@
+name: Run Scraper
+
+on:
+  schedule:
+    - cron: '0 12 * * *'   # 8am EST (12:00 UTC) — shifts to 7am EDT in summer
+    - cron: '0 16 * * *'   # 12pm EST (16:00 UTC)
+    - cron: '0 20 * * *'   # 4pm EST (20:00 UTC)
+  workflow_dispatch:        # allow manual runs from GitHub UI
+
+concurrency:
+  group: scraper
+  cancel-in-progress: false  # queue concurrent runs rather than cancel them
+
+permissions:
+  contents: write            # required to push updated index.html back to the repo
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: 'pip'
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ hashFiles('requirements.txt') }}
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          playwright install chromium --with-deps
+
+      - name: Run scraper
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          EMAIL_ENABLED: ${{ secrets.EMAIL_ENABLED }}
+          EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_RECIPIENTS: ${{ secrets.EMAIL_RECIPIENTS }}
+          EMAIL_SMTP_SERVER: ${{ secrets.EMAIL_SMTP_SERVER }}
+          EMAIL_SMTP_PORT: ${{ secrets.EMAIL_SMTP_PORT }}
+        run: python scraper.py
+
+      - name: Generate HTML
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: python generate_html.py
+
+      - name: Commit updated HTML
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: update signed listings"
+          file_pattern: "index.html"
