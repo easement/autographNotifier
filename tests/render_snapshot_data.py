@@ -39,6 +39,10 @@ def sample_web_html() -> str:
     return generate_html(listings)
 
 
+def normalize_web_html(html: str) -> str:
+    return re.sub(r"Generated [^<\n]+", "Generated <TIMESTAMP>", html)
+
+
 def normalize_email_html(html: str) -> str:
     normalized = re.sub(r"Scanned [^<]+", "Scanned <TIMESTAMP>", html)
     normalized = re.sub(r"scanned [^.]+\.", "scanned <PREVIEW_TIMESTAMP>.", normalized)
