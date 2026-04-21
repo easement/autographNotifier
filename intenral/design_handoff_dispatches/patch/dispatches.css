@@ -1,0 +1,227 @@
+/* ── Par Avion palette overlay ── */
+  :root {
+    --paper:       #F2E8D5;
+    --paper-2:     #EADFC7;
+    --surface:     #FAF3E1;
+    --ink:         #121212;
+    --ink-2:       #2B2623;
+    --ink-3:       #6B6358;
+    --ink-4:       #9B9180;
+    --red:         #B91C1C;
+    --red-deep:    #8F1414;
+    --blue:        #1E3A8A;
+    --border:      #C9B994;
+    --border-soft: #DDD0B3;
+
+    --font-display: 'Oswald', 'Arial Narrow', Impact, sans-serif;
+    --font-body:    'Source Serif 4', 'Iowan Old Style', Georgia, serif;
+    --font-mono:    'JetBrains Mono', ui-monospace, monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background-color: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  .site-header {
+    position: sticky; top: 0; z-index: 100;
+    background: var(--paper);
+    border-bottom: 1px solid var(--ink);
+  }
+  .header-inner {
+    max-width: 1200px; margin: 0 auto; padding: 0 24px;
+    display: flex; align-items: center; gap: 20px; height: 64px;
+  }
+  .site-title {
+    font-family: var(--font-display);
+    font-size: 1.7rem; letter-spacing: 0.14em; font-weight: 600;
+    text-transform: uppercase;
+    color: var(--ink); line-height: 1; flex-shrink: 0;
+  }
+  .site-title span { color: var(--red); }
+  .header-meta {
+    font-family: var(--font-mono); font-size: 0.68rem;
+    color: var(--ink-3); letter-spacing: 0.14em;
+    text-transform: uppercase; padding-bottom: 2px;
+  }
+  .header-count {
+    font-family: var(--font-mono); font-size: 0.72rem;
+    color: var(--ink-3); flex-shrink: 0; letter-spacing: 0.08em;
+  }
+
+  /* ── Search ── */
+  .search-wrap {
+    width: 260px; margin-left: auto; margin-right: 0;
+    position: relative; display: flex; align-items: center; flex-shrink: 0;
+  }
+  .search-input {
+    width: 100%; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 0;
+    padding: 7px 30px 7px 14px;
+    font-family: var(--font-body); font-size: 0.85rem;
+    color: var(--ink); outline: none;
+    transition: border-color 0.18s, background 0.18s;
+    -webkit-appearance: none;
+  }
+  .search-input::placeholder { color: var(--ink-4); font-style: italic; }
+  .search-input:focus { border-color: var(--ink); }
+  .search-input::-webkit-search-cancel-button { display: none; }
+  .search-clear {
+    position: absolute; right: 10px;
+    background: none; border: none; color: var(--ink-3);
+    cursor: pointer; font-size: 0.68rem; line-height: 1;
+    padding: 2px 4px; display: none; transition: color 0.15s;
+  }
+  .search-clear:hover { color: var(--ink); }
+  .search-clear.visible { display: block; }
+
+  /* ── Main ── */
+  .main {
+    max-width: 1200px; margin: 0 auto; padding: 32px 24px 80px;
+  }
+
+  /* ── Date Section ── */
+  .date-section { margin-bottom: 48px; }
+  .date-section.hidden { display: none; }
+  .date-heading {
+    display: flex; align-items: baseline; gap: 14px;
+    margin-bottom: 4px; padding-bottom: 10px;
+    border-bottom: 1.5px solid var(--red);
+  }
+  .date-label {
+    font-family: var(--font-display); font-size: 1.65rem;
+    letter-spacing: 0.05em; color: var(--ink); line-height: 1;
+    font-weight: 600; text-transform: uppercase;
+  }
+  .date-count {
+    font-family: var(--font-mono); font-size: 0.72rem;
+    color: var(--ink-3); letter-spacing: 0.08em;
+  }
+  .today-badge {
+    display: inline-block; background: var(--paper); color: var(--red);
+    border: 1.5px solid var(--red);
+    font-family: var(--font-display); font-size: 0.62rem; font-weight: 600;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    padding: 2px 7px; border-radius: 0; margin-left: 10px;
+    vertical-align: middle; position: relative; top: -3px;
+    transform: rotate(-2deg);
+  }
+
+  /* ── Table ── */
+  .listings-table { width: 100%; border-collapse: collapse; margin-top: 2px; }
+  .listings-table thead th {
+    font-family: var(--font-mono); font-size: 0.62rem;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--ink-3); padding: 10px 12px 8px; text-align: left;
+    border-bottom: 1px solid var(--border); font-weight: 500;
+  }
+  .listings-table thead th:last-child { text-align: right; }
+  .th-thumb { width: 68px; }
+  .listings-table tbody tr {
+    border-bottom: 1px solid var(--border-soft);
+    transition: background 0.14s;
+  }
+  .listings-table tbody tr:hover { background: var(--paper-2); }
+  .listings-table tbody tr.hidden { display: none; }
+  .listings-table td { padding: 10px 12px; vertical-align: middle; }
+
+  /* ── Thumbnail ── */
+  .td-thumb { width: 68px; padding: 8px 12px 8px 0 !important; }
+  .thumb {
+    width: 52px; height: 52px; object-fit: cover;
+    border-radius: 0; display: block;
+    border: 1px solid var(--ink);
+  }
+  .thumb-placeholder {
+    width: 52px; height: 52px;
+    background: var(--paper-2);
+    border: 1px solid var(--border);
+  }
+
+  /* ── Title / Artist ── */
+  .td-title { max-width: 360px; }
+  .title-line {
+    font-size: 0.98rem; font-weight: 400;
+    font-family: var(--font-body);
+    color: var(--ink);
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    line-height: 1.35;
+  }
+  /* Override all inline background colors on format badges */
+  .format-badge {
+    display: inline-block !important;
+    color: var(--paper) !important;
+    background: var(--red) !important;
+    font-family: var(--font-display);
+    font-size: 0.6rem;
+    letter-spacing: 0.18em; text-transform: uppercase; font-weight: 600;
+    padding: 2px 7px; border-radius: 0 !important;
+    flex-shrink: 0;
+  }
+  /* CD badges: format-badge set to background:#2e8b57 in markup — neutralize with attribute selector */
+  .format-badge[style*="2e8b57"] {
+    background: var(--blue) !important;
+  }
+  .td-artist {
+    font-family: var(--font-mono); font-size: 0.72rem;
+    color: var(--ink-3); margin-top: 3px; letter-spacing: 0.02em;
+  }
+  .td-meta {
+    font-family: var(--font-mono); font-size: 0.68rem;
+    color: var(--ink-4); margin-top: 3px;
+  }
+
+  /* ── Shop / Price ── */
+  .td-shop {
+    font-family: var(--font-mono); font-size: 0.72rem;
+    color: var(--ink-3); white-space: nowrap;
+  }
+  .td-price {
+    font-family: var(--font-display); font-size: 0.95rem;
+    color: var(--ink); white-space: nowrap;
+    font-variant-numeric: tabular-nums; font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  /* ── Buy link ── */
+  .td-link { text-align: right; width: 90px; }
+  .buy-link {
+    display: inline-block; font-family: var(--font-display);
+    font-size: 0.68rem; letter-spacing: 0.18em; text-transform: uppercase; font-weight: 600;
+    color: var(--red); text-decoration: none;
+    border: 1.5px solid var(--red); padding: 4px 12px;
+    border-radius: 0; transition: background 0.15s, color 0.15s;
+    white-space: nowrap;
+    background: var(--paper);
+  }
+  .buy-link:hover { background: var(--red); color: var(--paper); }
+
+  /* ── Empty ── */
+  .empty-state, .search-empty {
+    padding: 60px 0; text-align: center;
+    color: var(--ink-3); font-family: var(--font-body); font-style: italic;
+    font-size: 0.95rem;
+  }
+
+  /* ── Footer ── */
+  .site-footer {
+    text-align: center; padding: 40px 24px;
+    font-family: var(--font-mono); font-size: 0.65rem;
+    letter-spacing: 0.18em; color: var(--ink-3);
+    border-top: 1px solid var(--border); text-transform: uppercase;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 720px) {
+    .td-shop, .td-price { display: none; }
+    .site-title { font-size: 1.3rem; }
+    .header-count { display: none; }
+    .search-wrap { width: 170px; }
+    .date-label { font-size: 1.3rem; }
+  }
