@@ -124,6 +124,32 @@ python scraper.py        # scrape + notify
 python generate_html.py  # rebuild index.html
 ```
 
-### 4. GitHub Actions
+### 4. Run tests
+
+```bash
+make test
+```
+
+This uses `venv/bin/python` when available and falls back to `python3`.
+
+### 5. Run type checks
+
+```bash
+make typecheck
+```
+
+### 6. Update snapshots
+
+```bash
+make snapshot-update
+```
+
+### 7. Verify snapshots are current
+
+```bash
+make snapshot-check
+```
+
+### 8. GitHub Actions
 
 Add all variables from `.env` as **repository secrets**. The workflow at `.github/workflows/scraper.yml` handles the rest.
