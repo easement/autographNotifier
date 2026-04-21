@@ -9,6 +9,7 @@ sys.path.insert(0, str(ROOT / "tests"))
 from render_snapshot_data import (
     email_head_fragment,
     normalize_email_html,
+    normalize_web_html,
     sample_email_html,
     sample_web_html,
     web_header_fragment,
@@ -24,7 +25,7 @@ def main() -> None:
     snapshot_dir = Path("tests/snapshots")
 
     email_html = normalize_email_html(sample_email_html())
-    web_html = sample_web_html()
+    web_html = normalize_web_html(sample_web_html())
 
     write_snapshot(snapshot_dir / "email_head_fragment.snap", email_head_fragment(email_html))
     write_snapshot(snapshot_dir / "web_header_fragment.snap", web_header_fragment(web_html))
