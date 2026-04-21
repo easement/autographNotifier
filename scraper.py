@@ -53,11 +53,25 @@ class Listing:
 SUPABASE_DB_URL = os.getenv("SUPABASE_DB_URL")
 
 
+def _parse_db_url(url: str) -> dict:
+    """Parse a postgres URL, extracting credentials without percent-decoding."""
+    m = re.match(
+        r"postgresql(?:\+\w+)?://([^:@]+):(.+)@([^:/]+)(?::(\d+))?/([^?]+)", url
+    )
+    if not m:
+        return {"conninfo": url}
+    user, password, host, port, dbname = m.groups()
+    params = {"user": user, "password": password, "host": host, "dbname": dbname}
+    if port:
+        params["port"] = int(port)
+    return params
+
+
 def init_db():
     import psycopg
     if not SUPABASE_DB_URL:
         raise RuntimeError("SUPABASE_DB_URL environment variable is not set.")
-    conn = psycopg.connect(SUPABASE_DB_URL)
+    conn = psycopg.connect(**_parse_db_url(SUPABASE_DB_URL))
     conn.execute("""
         CREATE TABLE IF NOT EXISTS public.listings (
             hash                TEXT PRIMARY KEY,
