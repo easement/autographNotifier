@@ -559,6 +559,686 @@ async def scrape_banquet(page: Page) -> list[Listing]:
     return listings
 
 
+# ─── Shopify JSON Scrapers ────────────────────────────────────────────────────
+
+async def scrape_nailcityrecord(client: httpx.AsyncClient) -> list[Listing]:
+    print("  → Nail City Record (Shopify JSON)...")
+    listings = await scrape_shopify(
+        client,
+        "https://nailcityrecord.com/collections/autographed-signed-editions/products.json",
+        "Nail City Record",
+        "https://nailcityrecord.com",
+    )
+    print(f"  → Found {len(listings)} listings")
+    return listings
+
+
+async def scrape_darksiderecords(client: httpx.AsyncClient) -> list[Listing]:
+    print("  → Darkside Records (Shopify JSON)...")
+    listings = await scrape_shopify(
+        client,
+        "https://shop.darksiderecords.com/collections/autographed-items/products.json",
+        "Darkside Records",
+        "https://shop.darksiderecords.com",
+    )
+    print(f"  → Found {len(listings)} listings")
+    return listings
+
+
+async def scrape_assai(client: httpx.AsyncClient) -> list[Listing]:
+    print("  → Assai Records (Shopify JSON)...")
+    listings = await scrape_shopify(
+        client,
+        "https://assai.co.uk/collections/signed-vinyl/products.json",
+        "Assai Records",
+        "https://assai.co.uk",
+    )
+    print(f"  → Found {len(listings)} listings")
+    return listings
+
+
+async def scrape_musicrecordshop(client: httpx.AsyncClient) -> list[Listing]:
+    print("  → Music Record Shop (Shopify JSON)...")
+    listings = await scrape_shopify(
+        client,
+        "https://musicrecordshop.com/collections/signed-vinyl/products.json",
+        "Music Record Shop",
+        "https://musicrecordshop.com",
+    )
+    print(f"  → Found {len(listings)} listings")
+    return listings
+
+
+async def scrape_rarelimiteds(client: httpx.AsyncClient) -> list[Listing]:
+    print("  → Rare Limiteds (Shopify JSON)...")
+    listings = await scrape_shopify(
+        client,
+        "https://rarelimiteds.com/collections/autographed/products.json",
+        "Rare Limiteds",
+        "https://rarelimiteds.com",
+    )
+    print(f"  → Found {len(listings)} listings")
+    return listings
+
+
+async def scrape_cleorecs(client: httpx.AsyncClient) -> list[Listing]:
+    print("  → Cleo Recs (Shopify JSON)...")
+    listings = await scrape_shopify(
+        client,
+        "https://cleorecs.com/collections/signed-items/products.json",
+        "Cleo Recs",
+        "https://cleorecs.com",
+    )
+    print(f"  → Found {len(listings)} listings")
+    return listings
+
+
+# ─── Zia Records ──────────────────────────────────────────────────────────────
+
+async def scrape_ziarecords(page: Page) -> list[Listing]:
+    """Paginated HTML catalog sorted newest first."""
+    BASE = "https://www.ziarecords.com"
+    listings = []
+    seen: set[str] = set()
+    page_num = 1
+
+    while page_num <= 20:
+        url = f"{BASE}/c/539/signed-albums?&so=9&page={page_num}"
+        print(f"  → Zia Records page {page_num}...")
+        try:
+            await page.goto(url, wait_until="networkidle", timeout=30000)
+            await page.wait_for_timeout(1500)
+        except Exception as e:
+            print(f"  ERROR loading Zia Records page {page_num}: {e}")
+            break
+
+        soup = BeautifulSoup(await page.content(), "html.parser")
+        cards = soup.select(
+            ".product-tile, .product-item, .catalog-item, "
+            "[class*='product-cell'], [data-product-id], .prod-item"
+        )
+        if not cards:
+            cards = soup.select(".product")
+
+        page_listings = []
+        for card in cards:
+            title_el = card.select_one(
+                ".product-name, .item-name, h3, h4, [class*='name'], [class*='title']"
+            )
+            if not title_el:
+                continue
+            title = title_el.get_text(strip=True)
+            if not title or len(title) < 3:
+                continue
+
+            artist_el = card.select_one(".product-artist, .artist, [class*='artist']")
+            artist = artist_el.get_text(strip=True) if artist_el else "Unknown"
+
+            price_el = card.select_one(".price, [class*='price'], .sale-price, .our-price")
+            price = re.sub(r"\s+", " ", price_el.get_text(strip=True)).strip() if price_el else None
+
+            img_el = card.select_one("img")
+            image_url = None
+            if img_el:
+                image_url = img_el.get("src") or img_el.get("data-src")
+                if image_url and image_url.startswith("//"):
+                    image_url = "https:" + image_url
+
+            link_el = card.select_one("a[href]")
+            product_url = link_el["href"] if link_el else None
+            if product_url and not product_url.startswith("http"):
+                product_url = BASE + product_url
+            if not product_url:
+                continue
+
+            fmt, signed_by, sig_loc = parse_signed_metadata(title, "")
+            lst = Listing(
+                shop="Zia Records",
+                artist=artist,
+                title=title,
+                format=fmt,
+                signed_by=signed_by,
+                signature_location=sig_loc,
+                price=price,
+                url=product_url,
+                image_url=image_url,
+                description=None,
+            )
+            if lst.hash not in seen:
+                seen.add(lst.hash)
+                page_listings.append(lst)
+
+        listings.extend(page_listings)
+        print(f"  → Found {len(page_listings)} listings on page {page_num}")
+
+        if len(page_listings) == 0:
+            break
+        page_num += 1
+
+    return listings
+
+
+# ─── Rare Vinyl ───────────────────────────────────────────────────────────────
+
+async def scrape_rarevinyl(page: Page) -> list[Listing]:
+    BASE = "https://us.rarevinyl.com"
+    listings = []
+    seen: set[str] = set()
+    page_num = 1
+
+    while page_num <= 20:
+        url = f"{BASE}/collections/autographs?tab=products&page={page_num}"
+        print(f"  → Rare Vinyl page {page_num}...")
+        try:
+            await page.goto(url, wait_until="networkidle", timeout=30000)
+            await page.wait_for_timeout(1500)
+        except Exception as e:
+            print(f"  ERROR loading Rare Vinyl page {page_num}: {e}")
+            break
+
+        soup = BeautifulSoup(await page.content(), "html.parser")
+        cards = soup.select(
+            ".product-item, .product-card, .grid-item, "
+            "[class*='product'], article.product"
+        )
+        if not cards:
+            cards = soup.select("li.item, .result-item")
+
+        page_listings = []
+        for card in cards:
+            title_el = card.select_one(
+                "h2, h3, h4, .product-title, .product-name, [class*='title'], [class*='name']"
+            )
+            if not title_el:
+                continue
+            title = title_el.get_text(strip=True)
+            if not title or len(title) < 3:
+                continue
+
+            artist_el = card.select_one(".artist, .product-artist, [class*='artist']")
+            artist = artist_el.get_text(strip=True) if artist_el else "Unknown"
+
+            price_el = card.select_one(".price, [class*='price']")
+            price = price_el.get_text(strip=True) if price_el else None
+
+            img_el = card.select_one("img")
+            image_url = None
+            if img_el:
+                image_url = img_el.get("src") or img_el.get("data-src")
+                if image_url and image_url.startswith("//"):
+                    image_url = "https:" + image_url
+
+            link_el = card.select_one("a[href]")
+            product_url = link_el["href"] if link_el else None
+            if product_url and not product_url.startswith("http"):
+                product_url = BASE + product_url
+            if not product_url:
+                continue
+
+            fmt, signed_by, sig_loc = parse_signed_metadata(title, "")
+            lst = Listing(
+                shop="Rare Vinyl",
+                artist=artist,
+                title=title,
+                format=fmt,
+                signed_by=signed_by,
+                signature_location=sig_loc,
+                price=price,
+                url=product_url,
+                image_url=image_url,
+                description=None,
+            )
+            if lst.hash not in seen:
+                seen.add(lst.hash)
+                page_listings.append(lst)
+
+        listings.extend(page_listings)
+        print(f"  → Found {len(page_listings)} listings on page {page_num}")
+
+        if len(page_listings) == 0:
+            break
+        page_num += 1
+
+    return listings
+
+
+# ─── Rough Trade ──────────────────────────────────────────────────────────────
+
+async def scrape_roughtrade(page: Page) -> list[Listing]:
+    BASE = "https://www.roughtrade.com"
+    url = f"{BASE}/en-us/search?q=signed&sortBy=newest_released&signed=true"
+    listings = []
+    seen: set[str] = set()
+
+    print("  → Rough Trade...")
+    try:
+        await page.goto(url, wait_until="networkidle", timeout=30000)
+        await page.wait_for_timeout(2000)
+    except Exception as e:
+        print(f"  ERROR loading Rough Trade: {e}")
+        return listings
+
+    prev_height = 0
+    for _ in range(20):
+        await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+        await page.wait_for_timeout(1200)
+        curr_height = await page.evaluate("document.body.scrollHeight")
+        if curr_height == prev_height:
+            break
+        prev_height = curr_height
+
+    soup = BeautifulSoup(await page.content(), "html.parser")
+    cards = soup.select(
+        ".product, .product-item, .search-result, "
+        "[class*='product-card'], [class*='result-item']"
+    )
+    if not cards:
+        cards = soup.select("article, li.item")
+
+    for card in cards:
+        title_el = card.select_one(
+            "h2, h3, h4, .product-title, .product-name, [class*='title'], [class*='name']"
+        )
+        if not title_el:
+            continue
+        title = title_el.get_text(strip=True)
+        if not title:
+            continue
+
+        artist_el = card.select_one(".artist, .product-artist, [class*='artist']")
+        artist = artist_el.get_text(strip=True) if artist_el else "Unknown"
+
+        desc_el = card.select_one(".description, p, [class*='desc']")
+        description = desc_el.get_text(strip=True) if desc_el else ""
+
+        price_el = card.select_one(".price, [class*='price']")
+        price = price_el.get_text(strip=True) if price_el else None
+
+        img_el = card.select_one("img")
+        image_url = None
+        if img_el:
+            image_url = img_el.get("src") or img_el.get("data-src")
+            if image_url and image_url.startswith("//"):
+                image_url = "https:" + image_url
+
+        link_el = card.select_one("a[href]")
+        product_url = link_el["href"] if link_el else None
+        if product_url and not product_url.startswith("http"):
+            product_url = BASE + product_url
+        if not product_url:
+            continue
+
+        fmt, signed_by, sig_loc = parse_signed_metadata(title, description)
+        lst = Listing(
+            shop="Rough Trade",
+            artist=artist,
+            title=title,
+            format=fmt,
+            signed_by=signed_by,
+            signature_location=sig_loc,
+            price=price,
+            url=product_url,
+            image_url=image_url,
+            description=description[:500] if description else None,
+        )
+        if lst.hash not in seen:
+            seen.add(lst.hash)
+            listings.append(lst)
+
+    print(f"  → Found {len(listings)} listings")
+    return listings
+
+
+# ─── Looney Tunes Long Island ─────────────────────────────────────────────────
+
+async def scrape_looneytunes(page: Page) -> list[Listing]:
+    BASE = "https://www.looneytuneslongisland.com"
+    listings = []
+    seen: set[str] = set()
+    page_num = 1
+
+    while page_num <= 20:
+        url = f"{BASE}/autographeditems" if page_num == 1 else f"{BASE}/autographeditems?page={page_num}"
+        print(f"  → Looney Tunes Long Island page {page_num}...")
+        try:
+            await page.goto(url, wait_until="networkidle", timeout=30000)
+            await page.wait_for_timeout(1500)
+        except Exception as e:
+            print(f"  ERROR loading Looney Tunes page {page_num}: {e}")
+            break
+
+        soup = BeautifulSoup(await page.content(), "html.parser")
+        cards = soup.select(
+            ".product-item, .product-card, .grid-item, "
+            "[class*='product'], .item"
+        )
+        if not cards:
+            cards = soup.select("article, li.product")
+
+        page_listings = []
+        for card in cards:
+            title_el = card.select_one(
+                "h2, h3, h4, .product-title, .product-name, [class*='title'], [class*='name']"
+            )
+            if not title_el:
+                continue
+            title = title_el.get_text(strip=True)
+            if not title or len(title) < 3:
+                continue
+
+            artist_el = card.select_one(".artist, .product-artist, [class*='artist']")
+            artist = artist_el.get_text(strip=True) if artist_el else "Unknown"
+
+            price_el = card.select_one(".price, [class*='price']")
+            price = price_el.get_text(strip=True) if price_el else None
+
+            img_el = card.select_one("img")
+            image_url = None
+            if img_el:
+                image_url = img_el.get("src") or img_el.get("data-src")
+                if image_url and image_url.startswith("//"):
+                    image_url = "https:" + image_url
+
+            link_el = card.select_one("a[href]")
+            product_url = link_el["href"] if link_el else None
+            if product_url and not product_url.startswith("http"):
+                product_url = BASE + product_url
+            if not product_url:
+                continue
+
+            fmt, signed_by, sig_loc = parse_signed_metadata(title, "")
+            lst = Listing(
+                shop="Looney Tunes Long Island",
+                artist=artist,
+                title=title,
+                format=fmt,
+                signed_by=signed_by,
+                signature_location=sig_loc,
+                price=price,
+                url=product_url,
+                image_url=image_url,
+                description=None,
+            )
+            if lst.hash not in seen:
+                seen.add(lst.hash)
+                page_listings.append(lst)
+
+        listings.extend(page_listings)
+        print(f"  → Found {len(page_listings)} listings on page {page_num}")
+
+        if len(page_listings) == 0:
+            break
+        page_num += 1
+
+    return listings
+
+
+# ─── Fingerprints Music ───────────────────────────────────────────────────────
+
+async def scrape_fingerprints(page: Page) -> list[Listing]:
+    BASE = "https://shop.fingerprintsmusic.com"
+    listings = []
+    seen: set[str] = set()
+    page_num = 1
+
+    while page_num <= 20:
+        url = (
+            f"{BASE}/Search?terms=autographed&availability=purchase&condition=any"
+            f"&release_date_start=&release_date_end=&page={page_num}"
+        )
+        print(f"  → Fingerprints Music page {page_num}...")
+        try:
+            await page.goto(url, wait_until="networkidle", timeout=30000)
+            await page.wait_for_timeout(1500)
+        except Exception as e:
+            print(f"  ERROR loading Fingerprints Music page {page_num}: {e}")
+            break
+
+        soup = BeautifulSoup(await page.content(), "html.parser")
+        cards = soup.select(
+            ".product-item, .product-card, .grid-item, .search-result, "
+            "[class*='product'], [class*='result']"
+        )
+        if not cards:
+            cards = soup.select("article, li.item")
+
+        page_listings = []
+        for card in cards:
+            title_el = card.select_one(
+                "h2, h3, h4, .product-title, .product-name, [class*='title'], [class*='name']"
+            )
+            if not title_el:
+                continue
+            title = title_el.get_text(strip=True)
+            if not title or len(title) < 3:
+                continue
+
+            artist_el = card.select_one(".artist, .product-artist, [class*='artist']")
+            artist = artist_el.get_text(strip=True) if artist_el else "Unknown"
+
+            price_el = card.select_one(".price, [class*='price']")
+            price = price_el.get_text(strip=True) if price_el else None
+
+            img_el = card.select_one("img")
+            image_url = None
+            if img_el:
+                image_url = img_el.get("src") or img_el.get("data-src")
+                if image_url and image_url.startswith("//"):
+                    image_url = "https:" + image_url
+
+            link_el = card.select_one("a[href]")
+            product_url = link_el["href"] if link_el else None
+            if product_url and not product_url.startswith("http"):
+                product_url = BASE + product_url
+            if not product_url:
+                continue
+
+            fmt, signed_by, sig_loc = parse_signed_metadata(title, "")
+            lst = Listing(
+                shop="Fingerprints Music",
+                artist=artist,
+                title=title,
+                format=fmt,
+                signed_by=signed_by,
+                signature_location=sig_loc,
+                price=price,
+                url=product_url,
+                image_url=image_url,
+                description=None,
+            )
+            if lst.hash not in seen:
+                seen.add(lst.hash)
+                page_listings.append(lst)
+
+        listings.extend(page_listings)
+        print(f"  → Found {len(page_listings)} listings on page {page_num}")
+
+        if len(page_listings) == 0:
+            break
+        page_num += 1
+
+    return listings
+
+
+# ─── Plaid Room Records ───────────────────────────────────────────────────────
+
+async def scrape_plaidroomrecords(page: Page) -> list[Listing]:
+    BASE = "https://www.plaidroomrecords.com"
+    listings = []
+    seen: set[str] = set()
+
+    print("  → Plaid Room Records...")
+    url = (
+        f"{BASE}/search?sort_by=created-descending&q=signed"
+        "&type=product&filter.v.availability=1"
+    )
+    try:
+        await page.goto(url, wait_until="networkidle", timeout=30000)
+        await page.wait_for_timeout(2000)
+    except Exception as e:
+        print(f"  ERROR loading Plaid Room Records: {e}")
+        return listings
+
+    prev_height = 0
+    for _ in range(20):
+        await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+        await page.wait_for_timeout(1200)
+        curr_height = await page.evaluate("document.body.scrollHeight")
+        if curr_height == prev_height:
+            break
+        prev_height = curr_height
+
+    soup = BeautifulSoup(await page.content(), "html.parser")
+    cards = soup.select(
+        ".product-item, .product-card, .grid-item, "
+        "[class*='product'], .search-result-item"
+    )
+    if not cards:
+        cards = soup.select("article, li.item")
+
+    for card in cards:
+        title_el = card.select_one(
+            "h2, h3, h4, .product-title, .product-name, [class*='title'], [class*='name']"
+        )
+        if not title_el:
+            continue
+        title = title_el.get_text(strip=True)
+        if not title or len(title) < 3:
+            continue
+
+        artist_el = card.select_one(".artist, .product-artist, [class*='artist'], .vendor")
+        artist = artist_el.get_text(strip=True) if artist_el else "Unknown"
+
+        price_el = card.select_one(".price, [class*='price']")
+        price = price_el.get_text(strip=True) if price_el else None
+
+        img_el = card.select_one("img")
+        image_url = None
+        if img_el:
+            image_url = img_el.get("src") or img_el.get("data-src")
+            if image_url and image_url.startswith("//"):
+                image_url = "https:" + image_url
+
+        link_el = card.select_one("a[href]")
+        product_url = link_el["href"] if link_el else None
+        if product_url and not product_url.startswith("http"):
+            product_url = BASE + product_url
+        if not product_url:
+            continue
+
+        fmt, signed_by, sig_loc = parse_signed_metadata(title, "")
+        lst = Listing(
+            shop="Plaid Room Records",
+            artist=artist,
+            title=title,
+            format=fmt,
+            signed_by=signed_by,
+            signature_location=sig_loc,
+            price=price,
+            url=product_url,
+            image_url=image_url,
+            description=None,
+        )
+        if lst.hash not in seen:
+            seen.add(lst.hash)
+            listings.append(lst)
+
+    print(f"  → Found {len(listings)} listings")
+    return listings
+
+
+# ─── Seasick Birmingham ───────────────────────────────────────────────────────
+
+async def scrape_seasick(page: Page) -> list[Listing]:
+    BASE = "https://seasickbham.com"
+    listings = []
+    seen: set[str] = set()
+
+    print("  → Seasick Birmingham...")
+    url = f"{BASE}/search?type=product&q=autographed"
+    try:
+        await page.goto(url, wait_until="networkidle", timeout=30000)
+        await page.wait_for_timeout(2000)
+    except Exception as e:
+        print(f"  ERROR loading Seasick Birmingham: {e}")
+        return listings
+
+    prev_height = 0
+    for _ in range(20):
+        await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+        await page.wait_for_timeout(1200)
+        curr_height = await page.evaluate("document.body.scrollHeight")
+        if curr_height == prev_height:
+            break
+        prev_height = curr_height
+
+    soup = BeautifulSoup(await page.content(), "html.parser")
+    cards = soup.select(
+        ".product-item, .product-card, .grid-item, "
+        "[class*='product'], .search-result-item"
+    )
+    if not cards:
+        cards = soup.select("article, li.item")
+
+    for card in cards:
+        title_el = card.select_one(
+            "h2, h3, h4, .product-title, .product-name, [class*='title'], [class*='name']"
+        )
+        if not title_el:
+            continue
+        title = title_el.get_text(strip=True)
+        if not title or len(title) < 3:
+            continue
+
+        desc_el = card.select_one(".description, p, [class*='desc']")
+        description = desc_el.get_text(strip=True) if desc_el else ""
+
+        # Post-filter: must mention autograph/signed
+        combined_check = f"{title} {description}".lower()
+        if "autograph" not in combined_check and "signed" not in combined_check:
+            continue
+
+        artist_el = card.select_one(".artist, .product-artist, [class*='artist'], .vendor")
+        artist = artist_el.get_text(strip=True) if artist_el else "Unknown"
+
+        price_el = card.select_one(".price, [class*='price']")
+        price = price_el.get_text(strip=True) if price_el else None
+
+        img_el = card.select_one("img")
+        image_url = None
+        if img_el:
+            image_url = img_el.get("src") or img_el.get("data-src")
+            if image_url and image_url.startswith("//"):
+                image_url = "https:" + image_url
+
+        link_el = card.select_one("a[href]")
+        product_url = link_el["href"] if link_el else None
+        if product_url and not product_url.startswith("http"):
+            product_url = BASE + product_url
+        if not product_url:
+            continue
+
+        fmt, signed_by, sig_loc = parse_signed_metadata(title, description)
+        lst = Listing(
+            shop="Seasick Birmingham",
+            artist=artist,
+            title=title,
+            format=fmt,
+            signed_by=signed_by,
+            signature_location=sig_loc,
+            price=price,
+            url=product_url,
+            image_url=image_url,
+            description=description[:500] if description else None,
+        )
+        if lst.hash not in seen:
+            seen.add(lst.hash)
+            listings.append(lst)
+
+    print(f"  → Found {len(listings)} listings")
+    return listings
+
+
 # ─── Config ───────────────────────────────────────────────────────────────────
 
 def load_config() -> dict:
@@ -661,6 +1341,13 @@ async def run_scraper():
             sg_page = await context.new_page()
             banquet_page = await context.new_page()
             hive_page = await context.new_page()
+            zia_page = await context.new_page()
+            rarevinyl_page = await context.new_page()
+            roughtrade_page = await context.new_page()
+            looneytunes_page = await context.new_page()
+            fingerprints_page = await context.new_page()
+            plaidroom_page = await context.new_page()
+            seasick_page = await context.new_page()
 
             print("Scraping shops...\n")
             results = await asyncio.gather(
@@ -668,6 +1355,19 @@ async def run_scraper():
                 scrape_3hive(client, hive_page),
                 scrape_sgrecordshop(sg_page),
                 scrape_banquet(banquet_page),
+                scrape_nailcityrecord(client),
+                scrape_darksiderecords(client),
+                scrape_assai(client),
+                scrape_musicrecordshop(client),
+                scrape_rarelimiteds(client),
+                scrape_cleorecs(client),
+                scrape_ziarecords(zia_page),
+                scrape_rarevinyl(rarevinyl_page),
+                scrape_roughtrade(roughtrade_page),
+                scrape_looneytunes(looneytunes_page),
+                scrape_fingerprints(fingerprints_page),
+                scrape_plaidroomrecords(plaidroom_page),
+                scrape_seasick(seasick_page),
                 return_exceptions=True,
             )
 
