@@ -186,44 +186,46 @@ def generate_html(listings: list[dict]) -> str:
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Signed Records</title>
+<title>Dispatches — Autograph Notifier</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400;1,8..60,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
+  /* ── Par Avion palette overlay ── */
   :root {{
-    --navy:       #1a1a2e;
-    --navy-deep:  #12122a;
-    --navy-mid:   #232340;
-    --navy-card:  #1e1e38;
-    --coral:      #e94560;
-    --coral-dim:  #b8304a;
-    --white:      #f2f0ee;
-    --gray:       #9494aa;
-    --gray-dim:   #5c5c78;
-    --border:     rgba(255,255,255,0.07);
-    --font-display: 'Bebas Neue', sans-serif;
-    --font-body:    'DM Sans', sans-serif;
-    --font-mono:    'DM Mono', monospace;
+    --paper:       #F2E8D5;
+    --paper-2:     #EADFC7;
+    --surface:     #FAF3E1;
+    --ink:         #121212;
+    --ink-2:       #2B2623;
+    --ink-3:       #6B6358;
+    --ink-4:       #9B9180;
+    --red:         #B91C1C;
+    --red-deep:    #8F1414;
+    --blue:        #1E3A8A;
+    --border:      #C9B994;
+    --border-soft: #DDD0B3;
+
+    --font-display: 'Oswald', 'Arial Narrow', Impact, sans-serif;
+    --font-body:    'Source Serif 4', 'Iowan Old Style', Georgia, serif;
+    --font-mono:    'JetBrains Mono', ui-monospace, monospace;
   }}
 
   *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
   html {{ scroll-behavior: smooth; }}
 
   body {{
-    background-color: var(--navy-deep);
-    color: var(--white);
+    background-color: var(--paper);
+    color: var(--ink);
     font-family: var(--font-body);
     min-height: 100vh;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
   }}
 
-  /* ─── Header ─── */
+  /* ── Header ── */
   .site-header {{
     position: sticky; top: 0; z-index: 100;
-    background: var(--navy-deep);
-    border-bottom: 1px solid var(--border);
-    backdrop-filter: blur(12px);
+    background: var(--paper);
+    border-bottom: 1px solid var(--ink);
   }}
   .header-inner {{
     max-width: 1200px; margin: 0 auto; padding: 0 24px;
@@ -231,166 +233,187 @@ def generate_html(listings: list[dict]) -> str:
   }}
   .site-title {{
     font-family: var(--font-display);
-    font-size: 2rem; letter-spacing: 0.06em;
-    color: var(--white); line-height: 1; flex-shrink: 0;
+    font-size: 1.7rem; letter-spacing: 0.14em; font-weight: 600;
+    text-transform: uppercase;
+    color: var(--ink); line-height: 1; flex-shrink: 0;
   }}
-  .site-title span {{ color: var(--coral); }}
+  .site-title span {{ color: var(--red); }}
   .header-meta {{
     font-family: var(--font-mono); font-size: 0.68rem;
-    color: var(--gray-dim); letter-spacing: 0.08em;
+    color: var(--ink-3); letter-spacing: 0.14em;
     text-transform: uppercase; padding-bottom: 2px;
   }}
   .header-count {{
     font-family: var(--font-mono); font-size: 0.72rem;
-    color: var(--gray); flex-shrink: 0;
+    color: var(--ink-3); flex-shrink: 0; letter-spacing: 0.08em;
   }}
 
-  /* ─── Search ─── */
+  /* ── Search ── */
   .search-wrap {{
     width: 260px; margin-left: auto; margin-right: 0;
     position: relative; display: flex; align-items: center; flex-shrink: 0;
   }}
   .search-input {{
-    width: 100%; background: var(--navy-mid);
-    border: 1px solid var(--border); border-radius: 20px;
+    width: 100%; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 0;
     padding: 7px 30px 7px 14px;
-    font-family: var(--font-body); font-size: 0.8rem;
-    color: var(--white); outline: none;
+    font-family: var(--font-body); font-size: 0.85rem;
+    color: var(--ink); outline: none;
     transition: border-color 0.18s, background 0.18s;
     -webkit-appearance: none;
   }}
-  .search-input::placeholder {{ color: var(--gray-dim); }}
-  .search-input:focus {{ border-color: var(--gray-dim); background: var(--navy-card); }}
+  .search-input::placeholder {{ color: var(--ink-4); font-style: italic; }}
+  .search-input:focus {{ border-color: var(--ink); }}
   .search-input::-webkit-search-cancel-button {{ display: none; }}
   .search-clear {{
     position: absolute; right: 10px;
-    background: none; border: none; color: var(--gray-dim);
+    background: none; border: none; color: var(--ink-3);
     cursor: pointer; font-size: 0.68rem; line-height: 1;
     padding: 2px 4px; display: none; transition: color 0.15s;
   }}
-  .search-clear:hover {{ color: var(--white); }}
+  .search-clear:hover {{ color: var(--ink); }}
   .search-clear.visible {{ display: block; }}
 
-  /* ─── Main ─── */
+  /* ── Main ── */
   .main {{
     max-width: 1200px; margin: 0 auto; padding: 32px 24px 80px;
   }}
 
-  /* ─── Date Section ─── */
+  /* ── Date Section ── */
   .date-section {{ margin-bottom: 48px; }}
   .date-section.hidden {{ display: none; }}
   .date-heading {{
     display: flex; align-items: baseline; gap: 14px;
     margin-bottom: 4px; padding-bottom: 10px;
-    border-bottom: 2px solid var(--coral);
+    border-bottom: 1.5px solid var(--red);
   }}
   .date-label {{
     font-family: var(--font-display); font-size: 1.65rem;
-    letter-spacing: 0.05em; color: var(--white); line-height: 1;
+    letter-spacing: 0.05em; color: var(--ink); line-height: 1;
+    font-weight: 600; text-transform: uppercase;
   }}
   .date-count {{
-    font-family: var(--font-mono); font-size: 0.7rem;
-    color: var(--gray); letter-spacing: 0.08em;
+    font-family: var(--font-mono); font-size: 0.72rem;
+    color: var(--ink-3); letter-spacing: 0.08em;
   }}
   .today-badge {{
-    display: inline-block; background: var(--coral); color: #fff;
-    font-family: var(--font-mono); font-size: 0.6rem; font-weight: 500;
-    letter-spacing: 0.08em; text-transform: uppercase;
-    padding: 2px 6px; border-radius: 3px; margin-left: 10px;
+    display: inline-block; background: var(--paper); color: var(--red);
+    border: 1.5px solid var(--red);
+    font-family: var(--font-display); font-size: 0.62rem; font-weight: 600;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    padding: 2px 7px; border-radius: 0; margin-left: 10px;
     vertical-align: middle; position: relative; top: -3px;
+    transform: rotate(-2deg);
   }}
 
-  /* ─── Table ─── */
+  /* ── Table ── */
   .listings-table {{ width: 100%; border-collapse: collapse; margin-top: 2px; }}
   .listings-table thead th {{
     font-family: var(--font-mono); font-size: 0.62rem;
-    letter-spacing: 0.12em; text-transform: uppercase;
-    color: var(--gray-dim); padding: 10px 12px 8px; text-align: left;
-    border-bottom: 1px solid var(--border); font-weight: 400;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--ink-3); padding: 10px 12px 8px; text-align: left;
+    border-bottom: 1px solid var(--border); font-weight: 500;
   }}
   .listings-table thead th:last-child {{ text-align: right; }}
   .th-thumb {{ width: 68px; }}
   .listings-table tbody tr {{
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid var(--border-soft);
     transition: background 0.14s;
   }}
-  .listings-table tbody tr:hover {{ background: rgba(255,255,255,0.03); }}
+  .listings-table tbody tr:hover {{ background: var(--paper-2); }}
   .listings-table tbody tr.hidden {{ display: none; }}
   .listings-table td {{ padding: 10px 12px; vertical-align: middle; }}
 
-  /* ─── Thumbnail ─── */
+  /* ── Thumbnail ── */
   .td-thumb {{ width: 68px; padding: 8px 12px 8px 0 !important; }}
   .thumb {{
     width: 52px; height: 52px; object-fit: cover;
-    border-radius: 4px; display: block;
+    border-radius: 0; display: block;
+    border: 1px solid var(--ink);
   }}
   .thumb-placeholder {{
-    width: 52px; height: 52px; border-radius: 4px;
-    background: var(--navy-mid);
+    width: 52px; height: 52px;
+    background: var(--paper-2);
+    border: 1px solid var(--border);
   }}
 
-  /* ─── Title / Artist ─── */
+  /* ── Title / Artist ── */
   .td-title {{ max-width: 360px; }}
   .title-line {{
-    font-size: 0.95rem; font-weight: 500; color: var(--white);
-    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    font-size: 0.98rem; font-weight: 400;
+    font-family: var(--font-body);
+    color: var(--ink);
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    line-height: 1.35;
   }}
+  /* Override all inline background colors on format badges */
   .format-badge {{
-    display: inline-block; color: #fff;
-    font-family: var(--font-mono); font-size: 0.62rem;
-    letter-spacing: 0.08em; text-transform: uppercase;
-    padding: 2px 6px; border-radius: 3px; flex-shrink: 0;
+    display: inline-block !important;
+    color: var(--paper) !important;
+    background: var(--red) !important;
+    font-family: var(--font-display);
+    font-size: 0.6rem;
+    letter-spacing: 0.18em; text-transform: uppercase; font-weight: 600;
+    padding: 2px 7px; border-radius: 0 !important;
+    flex-shrink: 0;
+  }}
+  /* CD badges: format-badge set to background:#2e8b57 in markup — neutralize with attribute selector */
+  .format-badge[style*="2e8b57"] {{
+    background: var(--blue) !important;
   }}
   .td-artist {{
-    font-family: var(--font-mono); font-size: 0.75rem;
-    color: var(--gray); margin-top: 3px;
+    font-family: var(--font-mono); font-size: 0.72rem;
+    color: var(--ink-3); margin-top: 3px; letter-spacing: 0.02em;
   }}
   .td-meta {{
     font-family: var(--font-mono); font-size: 0.68rem;
-    color: var(--gray-dim); margin-top: 3px;
+    color: var(--ink-4); margin-top: 3px;
   }}
 
-  /* ─── Shop / Price ─── */
+  /* ── Shop / Price ── */
   .td-shop {{
     font-family: var(--font-mono); font-size: 0.72rem;
-    color: var(--gray); white-space: nowrap;
+    color: var(--ink-3); white-space: nowrap;
   }}
   .td-price {{
-    font-family: var(--font-mono); font-size: 0.72rem;
-    color: var(--gray); white-space: nowrap;
+    font-family: var(--font-display); font-size: 0.95rem;
+    color: var(--ink); white-space: nowrap;
+    font-variant-numeric: tabular-nums; font-weight: 600;
+    letter-spacing: -0.01em;
   }}
 
-  /* ─── Buy link ─── */
+  /* ── Buy link ── */
   .td-link {{ text-align: right; width: 90px; }}
   .buy-link {{
-    display: inline-block; font-family: var(--font-mono);
-    font-size: 0.65rem; letter-spacing: 0.08em; text-transform: uppercase;
-    color: var(--coral); text-decoration: none;
-    border: 1px solid var(--coral-dim); padding: 4px 10px;
-    border-radius: 3px; transition: background 0.15s, color 0.15s;
+    display: inline-block; font-family: var(--font-display);
+    font-size: 0.68rem; letter-spacing: 0.18em; text-transform: uppercase; font-weight: 600;
+    color: var(--red); text-decoration: none;
+    border: 1.5px solid var(--red); padding: 4px 12px;
+    border-radius: 0; transition: background 0.15s, color 0.15s;
     white-space: nowrap;
+    background: var(--paper);
   }}
-  .buy-link:hover {{ background: var(--coral); color: #fff; border-color: var(--coral); }}
+  .buy-link:hover {{ background: var(--red); color: var(--paper); }}
 
-  /* ─── Empty / Search empty ─── */
+  /* ── Empty ── */
   .empty-state, .search-empty {{
     padding: 60px 0; text-align: center;
-    color: var(--gray-dim); font-family: var(--font-mono);
-    font-size: 0.8rem; letter-spacing: 0.08em;
+    color: var(--ink-3); font-family: var(--font-body); font-style: italic;
+    font-size: 0.95rem;
   }}
 
-  /* ─── Footer ─── */
+  /* ── Footer ── */
   .site-footer {{
     text-align: center; padding: 40px 24px;
     font-family: var(--font-mono); font-size: 0.65rem;
-    letter-spacing: 0.1em; color: var(--gray-dim);
+    letter-spacing: 0.18em; color: var(--ink-3);
     border-top: 1px solid var(--border); text-transform: uppercase;
   }}
 
-  /* ─── Responsive ─── */
+  /* ── Responsive ── */
   @media (max-width: 720px) {{
     .td-shop, .td-price {{ display: none; }}
-    .site-title {{ font-size: 1.5rem; }}
+    .site-title {{ font-size: 1.3rem; }}
     .header-count {{ display: none; }}
     .search-wrap {{ width: 170px; }}
     .date-label {{ font-size: 1.3rem; }}
@@ -401,8 +424,8 @@ def generate_html(listings: list[dict]) -> str:
 
 <header class="site-header">
   <div class="header-inner">
-    <div class="site-title">Signed<span>&nbsp;Records</span></div>
-    <div class="header-meta">Autographed vinyl &amp; CDs</div>
+    <div class="site-title">Autograph<span>&nbsp;Notifier</span></div>
+    <div class="header-meta">Signed · Sealed · Delivered</div>
     <div class="search-wrap">
       <input type="search" id="eventSearch" class="search-input"
              placeholder="Search titles, artists…" autocomplete="off"
