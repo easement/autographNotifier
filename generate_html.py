@@ -46,6 +46,7 @@ def get_listings() -> list[dict]:
                price, url, image_url, first_seen::date AS date_added,
                first_seen
         FROM listings
+        WHERE archived = FALSE
         ORDER BY first_seen DESC
         """
     )

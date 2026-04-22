@@ -92,16 +92,20 @@ def init_db():
             image_url           TEXT,
             description         TEXT,
             first_seen          TIMESTAMPTZ,
-            last_seen           TIMESTAMPTZ
+            last_seen           TIMESTAMPTZ,
+            archived            BOOLEAN NOT NULL DEFAULT FALSE
         )
+    """)
+    # Migrate existing tables that predate the archived column
+    conn.execute("""
+        ALTER TABLE listings ADD COLUMN IF NOT EXISTS archived BOOLEAN NOT NULL DEFAULT FALSE
     """)
     conn.commit()
     return conn
 
 
-def upsert_listings(conn, listings: list[Listing]) -> list[Listing]:
+def upsert_listings(conn, listings: list[Listing], run_time: datetime) -> list[Listing]:
     """Insert new listings, update last_seen for existing ones. Returns NEW listings only."""
-    now = datetime.now()
     new_listings = []
     for lst in listings:
         existing = conn.execute(
@@ -109,21 +113,45 @@ def upsert_listings(conn, listings: list[Listing]) -> list[Listing]:
         ).fetchone()
         if existing:
             conn.execute(
-                "UPDATE listings SET last_seen = %s WHERE hash = %s", (now, lst.hash)
+                "UPDATE listings SET last_seen = %s, archived = FALSE WHERE hash = %s",
+                (run_time, lst.hash),
             )
         else:
             conn.execute(
                 """INSERT INTO listings
                     (hash, shop, artist, title, format, signed_by, signature_location,
-                     price, url, image_url, description, first_seen, last_seen)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                     price, url, image_url, description, first_seen, last_seen, archived)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,FALSE)""",
                 (lst.hash, lst.shop, lst.artist, lst.title, lst.format, lst.signed_by,
                  lst.signature_location, lst.price, lst.url, lst.image_url,
-                 lst.description, now, now),
+                 lst.description, run_time, run_time),
             )
             new_listings.append(lst)
     conn.commit()
     return new_listings
+
+
+def archive_stale_listings(conn, successful_shops: list[str], run_time: datetime) -> int:
+    """Archive listings from shops that scraped successfully but weren't seen this run.
+
+    Only touches shops that returned data — if a scraper errored, its listings are left alone.
+    Returns the number of newly archived listings.
+    """
+    if not successful_shops:
+        return 0
+    result = conn.execute(
+        """
+        UPDATE listings
+           SET archived = TRUE
+         WHERE shop = ANY(%s)
+           AND last_seen < %s
+           AND archived = FALSE
+        """,
+        (successful_shops, run_time),
+    )
+    conn.commit()
+    count = result.rowcount if result.rowcount is not None else 0
+    return count
 
 
 def deduplicate_listings(listings: list[Listing]) -> list[Listing]:
@@ -225,6 +253,9 @@ async def scrape_shopify(
                 continue
             artist = product.get("vendor") or "Unknown"
             variants = product.get("variants") or []
+            # Skip products where every variant is sold out
+            if variants and not any(v.get("available", True) for v in variants):
+                continue
             price_raw = variants[0].get("price", "") if variants else ""
             try:
                 price = f"${float(price_raw):.2f}" if price_raw else None
@@ -1319,8 +1350,9 @@ def send_email(new_listings: list[Listing], config: dict):
 # ─── Main Orchestrator ────────────────────────────────────────────────────────
 
 async def run_scraper():
+    run_time = datetime.now()
     print(f"{'='*60}")
-    print(f"  Autograph Notifier — {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+    print(f"  Autograph Notifier — {run_time.strftime('%Y-%m-%d %H:%M')}")
     print(f"{'='*60}\n")
 
     conn = init_db()
@@ -1373,17 +1405,25 @@ async def run_scraper():
 
             await browser.close()
 
+    # Collect listings and track which shops scraped successfully (returned ≥1 result)
+    successful_shops: set[str] = set()
     for r in results:
         if isinstance(r, Exception):
             print(f"  Scraper error: {r}")
         elif isinstance(r, list):
             all_listings.extend(r)
+            for lst in r:
+                successful_shops.add(lst.shop)
 
     all_listings = deduplicate_listings(all_listings)
     print(f"\nTotal scraped: {len(all_listings)} listings")
 
     print("\nComparing with database to detect new listings...")
-    new_listings = upsert_listings(conn, all_listings)
+    new_listings = upsert_listings(conn, all_listings, run_time)
+
+    archived_count = archive_stale_listings(conn, list(successful_shops), run_time)
+    if archived_count:
+        print(f"Archived {archived_count} listing(s) no longer found in shops.")
 
     config = load_config()
     if new_listings:
@@ -1396,7 +1436,7 @@ async def run_scraper():
         print("No new listings since last run.")
 
     print(f"\n{'='*60}")
-    print(f"  RESULTS: {len(all_listings)} total, {len(new_listings)} NEW")
+    print(f"  RESULTS: {len(all_listings)} total, {len(new_listings)} NEW, {archived_count} ARCHIVED")
     print(f"{'='*60}\n")
 
     conn.close()

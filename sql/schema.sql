@@ -14,8 +14,12 @@ CREATE TABLE IF NOT EXISTS public.listings (
     image_url           TEXT,
     description         TEXT,
     first_seen          TIMESTAMPTZ,        -- When the listing was first scraped
-    last_seen           TIMESTAMPTZ         -- Updated on every subsequent scrape
+    last_seen           TIMESTAMPTZ,        -- Updated on every subsequent scrape
+    archived            BOOLEAN NOT NULL DEFAULT FALSE  -- TRUE when item is no longer found in shop
 );
 
 -- Index for fast date-grouped queries
 CREATE INDEX IF NOT EXISTS listings_first_seen_idx ON public.listings (first_seen DESC);
+
+-- Index for filtering active (non-archived) listings
+CREATE INDEX IF NOT EXISTS listings_archived_idx ON public.listings (archived) WHERE archived = FALSE;
