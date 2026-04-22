@@ -3,6 +3,7 @@
 
 import os
 import re
+from datetime import date, timedelta
 
 from dotenv import load_dotenv
 
@@ -16,6 +17,7 @@ from web_rendering import (
 load_dotenv()
 
 OUTPUT_PATH = os.path.join(os.path.dirname(__file__), "index.html")
+NEW_OUTPUT_PATH = os.path.join(os.path.dirname(__file__), "new.html")
 SUPABASE_DB_URL = os.getenv("SUPABASE_DB_URL")
 
 def _parse_db_url(url: str) -> dict:
@@ -84,15 +86,43 @@ def generate_html(listings: list[dict]) -> str:
     return render_generate_html(view_models)
 
 
+def filter_listings_from_past_days(
+    listings: list[dict], days: int, today: date | None = None
+) -> list[dict]:
+    if days <= 0:
+        return []
+
+    current_day = today or date.today()
+    earliest_day = current_day - timedelta(days=days - 1)
+    filtered: list[dict] = []
+    for listing in listings:
+        date_added = listing.get("date_added", "")
+        if not date_added:
+            continue
+        try:
+            found_day = date.fromisoformat(date_added)
+        except ValueError:
+            continue
+        if earliest_day <= found_day <= current_day:
+            filtered.append(listing)
+    return filtered
+
+
 def main() -> None:
     print("Reading listings from Supabase…")
     listings = get_listings()
     print(f"Found {len(listings)} listings.")
 
-    html = generate_html(listings)
+    full_html = generate_html(listings)
     with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
-        f.write(html)
+        f.write(full_html)
     print(f"Written → {OUTPUT_PATH}")
+
+    recent_listings = filter_listings_from_past_days(listings, days=7)
+    recent_html = generate_html(recent_listings)
+    with open(NEW_OUTPUT_PATH, "w", encoding="utf-8") as f:
+        f.write(recent_html)
+    print(f"Written → {NEW_OUTPUT_PATH} ({len(recent_listings)} recent listings)")
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 import unittest
 from datetime import date
 
-from generate_html import _format_date_label, generate_html
+from generate_html import _format_date_label, filter_listings_from_past_days, generate_html
 
 
 class GenerateHtmlRenderingTests(unittest.TestCase):
@@ -52,6 +52,22 @@ class GenerateHtmlRenderingTests(unittest.TestCase):
         self.assertIn("Great &lt;Album&gt;", html)
         self.assertIn("thumb-placeholder", html)
         self.assertIn("Search titles, artists…", html)
+
+    def test_filter_listings_from_past_days_includes_only_recent_window(self):
+        listings = [
+            {"hash": "today", "date_added": "2026-04-22"},
+            {"hash": "boundary", "date_added": "2026-04-16"},
+            {"hash": "too_old", "date_added": "2026-04-15"},
+            {"hash": "future", "date_added": "2026-04-23"},
+            {"hash": "invalid", "date_added": "not-a-date"},
+            {"hash": "missing", "date_added": ""},
+        ]
+        filtered = filter_listings_from_past_days(
+            listings=listings,
+            days=7,
+            today=date(2026, 4, 22),
+        )
+        self.assertEqual([item["hash"] for item in filtered], ["today", "boundary"])
 
 
 if __name__ == "__main__":
