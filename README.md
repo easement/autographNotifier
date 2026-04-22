@@ -62,7 +62,11 @@ Sent via SMTP (Gmail by default) only when new listings are found. Groups listin
 
 ### HTML page
 
-`generate_html.py` reads all listings from Supabase and renders `index.html`, which is committed back to the repo by the workflow after each run.
+`generate_html.py` reads listings from Supabase and renders:
+- `index.html` (all active listings)
+- `new.html` (only listings first seen in the past 7 days)
+
+Both files are committed back to the repo by the workflow after each run.
 
 ---
 
@@ -121,7 +125,7 @@ cp .env.example .env
 
 ```bash
 python scraper.py        # scrape + notify
-python generate_html.py  # rebuild index.html
+python generate_html.py  # rebuild index.html + new.html
 ```
 
 ### 4. Run tests
