@@ -1184,89 +1184,92 @@ async def scrape_seasick(page: Page) -> list[Listing]:
     BASE = "https://seasickbham.com"
     listings = []
     seen: set[str] = set()
+    page_num = 1
 
     print("  → Seasick Birmingham...")
-    url = f"{BASE}/search?type=product&q=autographed"
-    try:
-        await page.goto(url, wait_until="networkidle", timeout=30000)
-        await page.wait_for_timeout(2000)
-    except Exception as e:
-        print(f"  ERROR loading Seasick Birmingham: {e}")
-        return listings
 
-    prev_height = 0
-    for _ in range(20):
-        await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-        await page.wait_for_timeout(1200)
-        curr_height = await page.evaluate("document.body.scrollHeight")
-        if curr_height == prev_height:
+    while page_num <= 15:
+        url = f"{BASE}/search?type=product&q=autographed&page={page_num}"
+        try:
+            await page.goto(url, wait_until="networkidle", timeout=30000)
+            await page.wait_for_timeout(1500)
+        except Exception as e:
+            print(f"  ERROR loading Seasick Birmingham page {page_num}: {e}")
             break
-        prev_height = curr_height
 
-    soup = BeautifulSoup(await page.content(), "html.parser")
-    cards = soup.select(
-        ".product-item, .product-card, .grid-item, "
-        "[class*='product'], .search-result-item"
-    )
-    if not cards:
-        cards = soup.select("article, li.item")
+        soup = BeautifulSoup(await page.content(), "html.parser")
+        # Dawn theme uses li.grid__item; fall back to broader selectors
+        cards = soup.select("li.grid__item, .product-item, .product-card, .grid-item, [class*='product-card-wrapper']")
+        if not cards:
+            cards = soup.select("article, li.item, .search-result-item")
 
-    for card in cards:
-        title_el = card.select_one(
-            "h2, h3, h4, .product-title, .product-name, [class*='title'], [class*='name']"
-        )
-        if not title_el:
-            continue
-        title = title_el.get_text(strip=True)
-        if not title or len(title) < 3:
-            continue
+        page_listings = []
+        for card in cards:
+            title_el = card.select_one(
+                ".card__heading, h2, h3, h4, .product-title, .product-name, [class*='title'], [class*='name']"
+            )
+            if not title_el:
+                continue
+            title = title_el.get_text(strip=True)
+            if not title or len(title) < 3:
+                continue
 
-        desc_el = card.select_one(".description, p, [class*='desc']")
-        description = desc_el.get_text(strip=True) if desc_el else ""
+            desc_el = card.select_one(".description, p, [class*='desc']")
+            description = desc_el.get_text(strip=True) if desc_el else ""
 
-        # Post-filter: must mention autograph/signed
-        combined_check = f"{title} {description}".lower()
-        if "autograph" not in combined_check and "signed" not in combined_check:
-            continue
+            # Post-filter: must mention autograph/signed
+            combined_check = f"{title} {description}".lower()
+            if "autograph" not in combined_check and "signed" not in combined_check:
+                continue
 
-        artist_el = card.select_one(".artist, .product-artist, [class*='artist'], .vendor")
-        artist = artist_el.get_text(strip=True) if artist_el else "Unknown"
+            artist_el = card.select_one(".artist, .product-artist, [class*='artist'], .vendor")
+            artist = artist_el.get_text(strip=True) if artist_el else "Unknown"
 
-        price_el = card.select_one(".price, [class*='price']")
-        price = price_el.get_text(strip=True) if price_el else None
+            price_el = card.select_one(".price, [class*='price']")
+            price = price_el.get_text(strip=True) if price_el else None
 
-        img_el = card.select_one("img")
-        image_url = None
-        if img_el:
-            image_url = img_el.get("src") or img_el.get("data-src")
-            if image_url and image_url.startswith("//"):
-                image_url = "https:" + image_url
+            img_el = card.select_one("img")
+            image_url = None
+            if img_el:
+                image_url = img_el.get("src") or img_el.get("data-src")
+                if image_url and image_url.startswith("//"):
+                    image_url = "https:" + image_url
 
-        link_el = card.select_one("a[href]")
-        product_url = link_el["href"] if link_el else None
-        if product_url and not product_url.startswith("http"):
-            product_url = BASE + product_url
-        if not product_url:
-            continue
+            # Prefer links directly to /products/ to avoid search-decorated URLs
+            link_el = card.select_one("a[href*='/products/']") or card.select_one("a[href]")
+            product_url = link_el["href"] if link_el else None
+            if product_url and not product_url.startswith("http"):
+                product_url = BASE + product_url
+            if not product_url:
+                continue
+            # Strip Shopify search query params for a stable canonical URL
+            product_url = product_url.split("?")[0]
 
-        fmt, signed_by, sig_loc = parse_signed_metadata(title, description)
-        lst = Listing(
-            shop="Seasick Birmingham",
-            artist=artist,
-            title=title,
-            format=fmt,
-            signed_by=signed_by,
-            signature_location=sig_loc,
-            price=price,
-            url=product_url,
-            image_url=image_url,
-            description=description[:500] if description else None,
-        )
-        if lst.hash not in seen:
-            seen.add(lst.hash)
-            listings.append(lst)
+            fmt, signed_by, sig_loc = parse_signed_metadata(title, description)
+            lst = Listing(
+                shop="Seasick Birmingham",
+                artist=artist,
+                title=title,
+                format=fmt,
+                signed_by=signed_by,
+                signature_location=sig_loc,
+                price=price,
+                url=product_url,
+                image_url=image_url,
+                description=description[:500] if description else None,
+            )
+            if lst.hash not in seen:
+                seen.add(lst.hash)
+                page_listings.append(lst)
 
-    print(f"  → Found {len(listings)} listings")
+        listings.extend(page_listings)
+        print(f"  → Page {page_num}: {len(page_listings)} listings")
+
+        if len(page_listings) == 0:
+            break
+        page_num += 1
+
+    print(f"  → Found {len(listings)} total Seasick Birmingham listings")
     return listings
 
 
