@@ -12,12 +12,14 @@ from web_rendering import (
     _esc as _render_esc,
     _format_date_label as _render_format_date_label,
     generate_html as render_generate_html,
+    generate_html_by_shop as render_generate_html_by_shop,
 )
 
 load_dotenv()
 
 OUTPUT_PATH = os.path.join(os.path.dirname(__file__), "index.html")
 NEW_OUTPUT_PATH = os.path.join(os.path.dirname(__file__), "new.html")
+BY_STORE_OUTPUT_PATH = os.path.join(os.path.dirname(__file__), "by-store.html")
 SUPABASE_DB_URL = os.getenv("SUPABASE_DB_URL")
 
 def _parse_db_url(url: str) -> dict:
@@ -86,6 +88,11 @@ def generate_html(listings: list[dict]) -> str:
     return render_generate_html(view_models)
 
 
+def generate_html_by_shop(listings: list[dict]) -> str:
+    view_models = [to_web_listing_view_model(listing) for listing in listings]
+    return render_generate_html_by_shop(view_models)
+
+
 def filter_listings_from_past_days(
     listings: list[dict], days: int, today: date | None = None
 ) -> list[dict]:
@@ -123,6 +130,11 @@ def main() -> None:
     with open(NEW_OUTPUT_PATH, "w", encoding="utf-8") as f:
         f.write(recent_html)
     print(f"Written → {NEW_OUTPUT_PATH} ({len(recent_listings)} recent listings)")
+
+    by_store_html = generate_html_by_shop(listings)
+    with open(BY_STORE_OUTPUT_PATH, "w", encoding="utf-8") as f:
+        f.write(by_store_html)
+    print(f"Written → {BY_STORE_OUTPUT_PATH}")
 
 
 if __name__ == "__main__":
