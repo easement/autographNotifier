@@ -2,6 +2,7 @@
   <div class="header-inner">
     <div class="site-title">Autograph<span>&nbsp;Notifier</span></div>
     <div class="header-meta">Signed · Sealed · Delivered</div>
+    <nav class="site-nav"><a href="index.html" class="nav-link nav-link--active">By Date</a><a href="by-store.html" class="nav-link">By Store</a></nav>
     <div class="search-wrap">
       <input type="search" id="eventSearch" class="search-input"
              placeholder="Search titles, artists…" autocomplete="off"
