@@ -121,7 +121,7 @@ def generate_html(listings: list[WebListingViewModel], page: str = "date") -> st
                 else ""
             )
 
-            rows_html += f"""<tr data-hash="{_esc(lst.hash)}">
+            rows_html += f"""<tr data-hash="{_esc(lst.hash)}" data-format="{_esc(lst.format)}">
         <td class="td-thumb">{img_html}</td>
         <td class="td-title">
           <div class="title-line">{_esc(lst.title)}{fmt_badge}</div>
@@ -397,6 +397,25 @@ def generate_html(listings: list[WebListingViewModel], page: str = "date") -> st
   .th-sort.sort-asc::after  {{ content: ' ▲'; opacity: 1; color: var(--red); }}
   .th-sort.sort-desc::after {{ content: ' ▼'; opacity: 1; color: var(--red); }}
 
+  /* ── Format bar ── */
+  .format-bar {{
+    border-top: 1px solid var(--border-soft);
+    background: var(--paper);
+  }}
+  .format-bar-inner {{
+    max-width: 1200px; margin: 0 auto; padding: 6px 24px;
+    display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
+  }}
+  .fmt-btn {{
+    font-family: var(--font-display); font-size: 0.58rem;
+    letter-spacing: 0.18em; text-transform: uppercase; font-weight: 600;
+    color: var(--ink-3); background: var(--paper);
+    border: 1.5px solid var(--border); padding: 3px 10px;
+    cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s;
+  }}
+  .fmt-btn:hover {{ color: var(--ink); border-color: var(--ink); }}
+  .fmt-btn--active {{ color: var(--paper); background: var(--ink); border-color: var(--ink); }}
+
   /* ── Responsive ── */
   @media (max-width: 720px) {{
     .td-shop, .td-price {{ display: none; }}
@@ -405,6 +424,8 @@ def generate_html(listings: list[WebListingViewModel], page: str = "date") -> st
     .search-wrap {{ width: 170px; }}
     .date-label {{ font-size: 1.3rem; }}
     .site-nav {{ display: none; }}
+    .format-bar-inner {{ gap: 4px; padding: 5px 16px; }}
+    .fmt-btn {{ font-size: 0.55rem; padding: 3px 8px; }}
   }}
 {_NAV_CSS}
 </style>
@@ -460,6 +481,7 @@ def generate_html(listings: list[WebListingViewModel], page: str = "date") -> st
   const flatBody = document.getElementById('flatBody');
   const sections = Array.from(document.querySelectorAll('.date-section'));
   const total = {total};
+  let activeFormat = null;
 
   function escHtml(s) {{
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -471,30 +493,39 @@ def generate_html(listings: list[WebListingViewModel], page: str = "date") -> st
     return ((t ? t.textContent : '') + ' ' + (a ? a.textContent : '')).toLowerCase();
   }}
 
-  function setCount(count, q) {{
-    if (!q) {{
+  function rowMatches(r) {{
+    const q = searchInput.value.trim().toLowerCase();
+    return (!q || rowText(r).includes(q)) && (!activeFormat || r.dataset.format === activeFormat);
+  }}
+
+  function setCount(count, isFiltered) {{
+    if (!isFiltered) {{
       headerCount.textContent = total + ' listings';
       searchEmpty.style.display = 'none';
     }} else {{
       headerCount.textContent = count + (count === 1 ? ' match' : ' matches');
       searchEmpty.style.display = count === 0 ? 'block' : 'none';
-      if (count === 0) searchEmpty.innerHTML = 'No results for &ldquo;' + escHtml(q) + '&rdquo;';
+      if (count === 0) {{
+        const label = searchInput.value.trim() || activeFormat || '';
+        searchEmpty.innerHTML = 'No results for &ldquo;' + escHtml(label) + '&rdquo;';
+      }}
     }}
   }}
 
-  // ── Search ──
-  function doSearch(query) {{
-    const q = query.trim().toLowerCase();
-    searchClear.classList.toggle('visible', query.length > 0);
+  // ── Filter (search + format) ──
+  function doFilter() {{
+    const q = searchInput.value.trim();
+    searchClear.classList.toggle('visible', searchInput.value.length > 0);
+    const isFiltered = q.length > 0 || activeFormat !== null;
 
     if (sortKey) {{
       let count = 0;
       flatBody.querySelectorAll('tr').forEach(r => {{
-        const match = !q || rowText(r).includes(q);
+        const match = rowMatches(r);
         r.classList.toggle('hidden', !match);
         if (match) count++;
       }});
-      setCount(count, q);
+      setCount(count, isFiltered);
       return;
     }}
 
@@ -502,22 +533,43 @@ def generate_html(listings: list[WebListingViewModel], page: str = "date") -> st
     sections.forEach(s => {{
       let hits = 0;
       s.querySelectorAll('tbody tr').forEach(r => {{
-        const match = !q || rowText(r).includes(q);
+        const match = rowMatches(r);
         r.classList.toggle('hidden', !match);
         if (match) hits++;
       }});
       count += hits;
-      if (!q) s.classList.remove('hidden');
+      if (!isFiltered) s.classList.remove('hidden');
       else s.classList.toggle('hidden', hits === 0);
     }});
-    setCount(count, q);
+    setCount(count, isFiltered);
   }}
 
-  searchInput.addEventListener('input', e => doSearch(e.target.value));
-  searchClear.addEventListener('click', () => {{ searchInput.value = ''; doSearch(''); searchInput.focus(); }});
+  searchInput.addEventListener('input', () => doFilter());
+  searchClear.addEventListener('click', () => {{ searchInput.value = ''; doFilter(); searchInput.focus(); }});
   searchInput.addEventListener('keydown', e => {{
-    if (e.key === 'Escape') {{ searchInput.value = ''; doSearch(''); searchInput.blur(); }}
+    if (e.key === 'Escape') {{ searchInput.value = ''; doFilter(); searchInput.blur(); }}
   }});
+
+  // ── Format bar ──
+  function buildFormatBar() {{
+    const formats = [...new Set(LISTINGS.map(l => l.format).filter(f => f && f !== 'unknown'))].sort();
+    if (formats.length <= 1) return;
+    const bar = document.createElement('div');
+    bar.className = 'format-bar';
+    bar.innerHTML = '<div class="format-bar-inner">' +
+      '<button class="fmt-btn fmt-btn--active" data-fmt="">All</button>' +
+      formats.map(f => '<button class="fmt-btn" data-fmt="' + escHtml(f) + '">' + escHtml(f) + '</button>').join('') +
+      '</div>';
+    document.querySelector('.site-header').appendChild(bar);
+    bar.addEventListener('click', e => {{
+      const btn = e.target.closest('.fmt-btn');
+      if (!btn) return;
+      activeFormat = btn.dataset.fmt || null;
+      bar.querySelectorAll('.fmt-btn').forEach(b => b.classList.toggle('fmt-btn--active', b === btn));
+      doFilter();
+    }});
+  }}
+  buildFormatBar();
 
   // ── Sort ──
   const byHash = Object.fromEntries(LISTINGS.map(l => [l.hash, l]));
@@ -555,7 +607,7 @@ def generate_html(listings: list[WebListingViewModel], page: str = "date") -> st
     sections.forEach(s => {{ s.style.display = 'none'; }});
     flatView.style.display = '';
     updateSortHeaders();
-    doSearch(searchInput.value);
+    doFilter();
   }}
 
   function clearSort() {{
@@ -565,7 +617,7 @@ def generate_html(listings: list[WebListingViewModel], page: str = "date") -> st
     flatView.style.display = 'none';
     sections.forEach(s => {{ s.style.display = ''; }});
     updateSortHeaders();
-    doSearch(searchInput.value);
+    doFilter();
   }}
 
   document.querySelectorAll('.th-sort').forEach(th => {{
@@ -633,7 +685,7 @@ def generate_html_by_shop(listings: list[WebListingViewModel]) -> str:
                 else ""
             )
 
-            rows_html += f"""<tr data-hash="{_esc(lst.hash)}">
+            rows_html += f"""<tr data-hash="{_esc(lst.hash)}" data-format="{_esc(lst.format)}">
         <td class="td-thumb">{img_html}</td>
         <td class="td-title">
           <div class="title-line">{_esc(lst.title)}{fmt_badge}</div>
@@ -879,6 +931,25 @@ def generate_html_by_shop(listings: list[WebListingViewModel]) -> str:
   .th-sort.sort-asc::after  {{ content: ' ▲'; opacity: 1; color: var(--red); }}
   .th-sort.sort-desc::after {{ content: ' ▼'; opacity: 1; color: var(--red); }}
 
+  /* ── Format bar ── */
+  .format-bar {{
+    border-top: 1px solid var(--border-soft);
+    background: var(--paper);
+  }}
+  .format-bar-inner {{
+    max-width: 1200px; margin: 0 auto; padding: 6px 24px;
+    display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
+  }}
+  .fmt-btn {{
+    font-family: var(--font-display); font-size: 0.58rem;
+    letter-spacing: 0.18em; text-transform: uppercase; font-weight: 600;
+    color: var(--ink-3); background: var(--paper);
+    border: 1.5px solid var(--border); padding: 3px 10px;
+    cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s;
+  }}
+  .fmt-btn:hover {{ color: var(--ink); border-color: var(--ink); }}
+  .fmt-btn--active {{ color: var(--paper); background: var(--ink); border-color: var(--ink); }}
+
   @media (max-width: 720px) {{
     .td-price {{ display: none; }}
     .site-title {{ font-size: 1.3rem; }}
@@ -886,6 +957,8 @@ def generate_html_by_shop(listings: list[WebListingViewModel]) -> str:
     .search-wrap {{ width: 170px; }}
     .date-label {{ font-size: 1.3rem; }}
     .site-nav {{ display: none; }}
+    .format-bar-inner {{ gap: 4px; padding: 5px 16px; }}
+    .fmt-btn {{ font-size: 0.55rem; padding: 3px 8px; }}
   }}
 {_NAV_CSS}
 </style>
@@ -940,6 +1013,7 @@ def generate_html_by_shop(listings: list[WebListingViewModel]) -> str:
   const flatBody = document.getElementById('flatBody');
   const sections = Array.from(document.querySelectorAll('.shop-section'));
   const total = {total};
+  let activeFormat = null;
 
   function escHtml(s) {{
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -951,29 +1025,39 @@ def generate_html_by_shop(listings: list[WebListingViewModel]) -> str:
     return ((t ? t.textContent : '') + ' ' + (a ? a.textContent : '')).toLowerCase();
   }}
 
-  function setCount(count, q) {{
-    if (!q) {{
+  function rowMatches(r) {{
+    const q = searchInput.value.trim().toLowerCase();
+    return (!q || rowText(r).includes(q)) && (!activeFormat || r.dataset.format === activeFormat);
+  }}
+
+  function setCount(count, isFiltered) {{
+    if (!isFiltered) {{
       headerCount.textContent = total + ' listings';
       searchEmpty.style.display = 'none';
     }} else {{
       headerCount.textContent = count + (count === 1 ? ' match' : ' matches');
       searchEmpty.style.display = count === 0 ? 'block' : 'none';
-      if (count === 0) searchEmpty.innerHTML = 'No results for &ldquo;' + escHtml(q) + '&rdquo;';
+      if (count === 0) {{
+        const label = searchInput.value.trim() || activeFormat || '';
+        searchEmpty.innerHTML = 'No results for &ldquo;' + escHtml(label) + '&rdquo;';
+      }}
     }}
   }}
 
-  function doSearch(query) {{
-    const q = query.trim().toLowerCase();
-    searchClear.classList.toggle('visible', query.length > 0);
+  // ── Filter (search + format) ──
+  function doFilter() {{
+    const q = searchInput.value.trim();
+    searchClear.classList.toggle('visible', searchInput.value.length > 0);
+    const isFiltered = q.length > 0 || activeFormat !== null;
 
     if (sortKey) {{
       let count = 0;
       flatBody.querySelectorAll('tr').forEach(r => {{
-        const match = !q || rowText(r).includes(q);
+        const match = rowMatches(r);
         r.classList.toggle('hidden', !match);
         if (match) count++;
       }});
-      setCount(count, q);
+      setCount(count, isFiltered);
       return;
     }}
 
@@ -981,22 +1065,43 @@ def generate_html_by_shop(listings: list[WebListingViewModel]) -> str:
     sections.forEach(s => {{
       let hits = 0;
       s.querySelectorAll('tbody tr').forEach(r => {{
-        const match = !q || rowText(r).includes(q);
+        const match = rowMatches(r);
         r.classList.toggle('hidden', !match);
         if (match) hits++;
       }});
       count += hits;
-      if (!q) s.classList.remove('hidden');
+      if (!isFiltered) s.classList.remove('hidden');
       else s.classList.toggle('hidden', hits === 0);
     }});
-    setCount(count, q);
+    setCount(count, isFiltered);
   }}
 
-  searchInput.addEventListener('input', e => doSearch(e.target.value));
-  searchClear.addEventListener('click', () => {{ searchInput.value = ''; doSearch(''); searchInput.focus(); }});
+  searchInput.addEventListener('input', () => doFilter());
+  searchClear.addEventListener('click', () => {{ searchInput.value = ''; doFilter(); searchInput.focus(); }});
   searchInput.addEventListener('keydown', e => {{
-    if (e.key === 'Escape') {{ searchInput.value = ''; doSearch(''); searchInput.blur(); }}
+    if (e.key === 'Escape') {{ searchInput.value = ''; doFilter(); searchInput.blur(); }}
   }});
+
+  // ── Format bar ──
+  function buildFormatBar() {{
+    const formats = [...new Set(LISTINGS.map(l => l.format).filter(f => f && f !== 'unknown'))].sort();
+    if (formats.length <= 1) return;
+    const bar = document.createElement('div');
+    bar.className = 'format-bar';
+    bar.innerHTML = '<div class="format-bar-inner">' +
+      '<button class="fmt-btn fmt-btn--active" data-fmt="">All</button>' +
+      formats.map(f => '<button class="fmt-btn" data-fmt="' + escHtml(f) + '">' + escHtml(f) + '</button>').join('') +
+      '</div>';
+    document.querySelector('.site-header').appendChild(bar);
+    bar.addEventListener('click', e => {{
+      const btn = e.target.closest('.fmt-btn');
+      if (!btn) return;
+      activeFormat = btn.dataset.fmt || null;
+      bar.querySelectorAll('.fmt-btn').forEach(b => b.classList.toggle('fmt-btn--active', b === btn));
+      doFilter();
+    }});
+  }}
+  buildFormatBar();
 
   const byHash = Object.fromEntries(LISTINGS.map(l => [l.hash, l]));
   const rowOrigins = new Map();
@@ -1033,7 +1138,7 @@ def generate_html_by_shop(listings: list[WebListingViewModel]) -> str:
     sections.forEach(s => {{ s.style.display = 'none'; }});
     flatView.style.display = '';
     updateSortHeaders();
-    doSearch(searchInput.value);
+    doFilter();
   }}
 
   function clearSort() {{
@@ -1043,7 +1148,7 @@ def generate_html_by_shop(listings: list[WebListingViewModel]) -> str:
     flatView.style.display = 'none';
     sections.forEach(s => {{ s.style.display = ''; }});
     updateSortHeaders();
-    doSearch(searchInput.value);
+    doFilter();
   }}
 
   document.querySelectorAll('.th-sort').forEach(th => {{
