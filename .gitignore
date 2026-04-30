@@ -6,3 +6,4 @@ __pycache__/
 scraper.log
 internal/
 .claude/
+CLAUDE.md
