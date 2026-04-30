@@ -1156,6 +1156,7 @@ async def scrape_plaidroomrecords(page: Page) -> list[Listing]:
             product_url = BASE + product_url
         if not product_url:
             continue
+        product_url = product_url.split("?")[0]
 
         fmt, signed_by, sig_loc = parse_signed_metadata(title, "")
         lst = Listing(
