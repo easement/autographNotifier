@@ -2,9 +2,7 @@ name: Run Scraper
 
 on:
   schedule:
-    - cron: '0 12 * * *'   # 8am EST (12:00 UTC) — shifts to 7am EDT in summer
     - cron: '0 16 * * *'   # 12pm EST (16:00 UTC)
-    - cron: '0 20 * * *'   # 4pm EST (20:00 UTC)
   workflow_dispatch:        # allow manual runs from GitHub UI
 
 concurrency:
