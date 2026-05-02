@@ -59,4 +59,4 @@ jobs:
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "chore: update signed listings"
-          file_pattern: "index.html new.html"
+          file_pattern: "index.html new.html by-store.html"
