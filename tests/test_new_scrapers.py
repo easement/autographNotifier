@@ -193,12 +193,20 @@ class TestRareVinyl(unittest.IsolatedAsyncioTestCase):
 
 # ─── Rough Trade ──────────────────────────────────────────────────────────────
 
+def _rt_card(title="Signed Deluxe Edition LP", artist="Test Artist", url="/en-us/product/test") -> str:
+    return f"""<article class="ShopifyResult_hitItem__abc123">
+        <a class="ShopifyResult_hitLink__xyz" href="{url}">
+            <p class="ShopifyResult_productTitle__FZMLT">{title}</p>
+        </a>
+        <div class="ShopifyResult_artistContainer__GcTX4">
+            <p class="ShopifyResult_hitArtists__ABeED">{artist}</p>
+        </div>
+    </article>"""
+
+
 class TestRoughTrade(unittest.IsolatedAsyncioTestCase):
     async def test_parses_listing_fields(self):
-        html = _product_page(
-            title="Signed Deluxe Edition LP",
-            url="https://www.roughtrade.com/en-us/product/test",
-        )
+        html = f"<html><body>{_rt_card()}</body></html>"
         listings = await scrape_roughtrade(_scroll_page_mock(html))
         self.assertEqual(len(listings), 1)
         lst = listings[0]
@@ -210,14 +218,8 @@ class TestRoughTrade(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(listings, [])
 
     async def test_deduplicates_same_url(self):
-        html = """<html><body>
-        <div class="product-item">
-            <a href="https://www.roughtrade.com/en-us/product/dup"><h3>Album</h3></a>
-        </div>
-        <div class="product-item">
-            <a href="https://www.roughtrade.com/en-us/product/dup"><h3>Album</h3></a>
-        </div>
-        </body></html>"""
+        card = _rt_card(url="/en-us/product/dup")
+        html = f"<html><body>{card}{card}</body></html>"
         listings = await scrape_roughtrade(_scroll_page_mock(html))
         self.assertEqual(len(listings), 1)
 
