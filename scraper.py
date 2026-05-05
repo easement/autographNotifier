@@ -856,30 +856,22 @@ async def scrape_roughtrade(page: Page) -> list[Listing]:
         prev_height = curr_height
 
     soup = BeautifulSoup(await page.content(), "html.parser")
-    cards = soup.select(
-        ".product, .product-item, .search-result, "
-        "[class*='product-card'], [class*='result-item']"
-    )
-    if not cards:
-        cards = soup.select("article, li.item")
+    cards = soup.select("[class*='hitItem']")
 
     for card in cards:
-        title_el = card.select_one(
-            "h2, h3, h4, .product-title, .product-name, [class*='title'], [class*='name']"
-        )
+        title_el = card.select_one("[class*='productTitle']")
         if not title_el:
             continue
         title = title_el.get_text(strip=True)
         if not title:
             continue
 
-        artist_el = card.select_one(".artist, .product-artist, [class*='artist']")
+        artist_el = card.select_one("[class*='hitArtists']")
         artist = artist_el.get_text(strip=True) if artist_el else "Unknown"
 
-        desc_el = card.select_one(".description, p, [class*='desc']")
-        description = desc_el.get_text(strip=True) if desc_el else ""
+        description = ""
 
-        price_el = card.select_one(".price, [class*='price']")
+        price_el = card.select_one("[class*='price']")
         price = price_el.get_text(strip=True) if price_el else None
 
         img_el = card.select_one("img")
@@ -888,6 +880,8 @@ async def scrape_roughtrade(page: Page) -> list[Listing]:
             image_url = img_el.get("src") or img_el.get("data-src")
             if image_url and image_url.startswith("//"):
                 image_url = "https:" + image_url
+            elif image_url and not image_url.startswith("http"):
+                image_url = BASE + image_url
 
         link_el = card.select_one("a[href]")
         product_url = link_el["href"] if link_el else None
