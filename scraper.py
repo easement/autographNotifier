@@ -525,31 +525,26 @@ async def scrape_banquet(page: Page) -> list[Listing]:
         prev_height = curr_height
 
     soup = BeautifulSoup(await page.content(), "html.parser")
-    cards = soup.select(
-        ".product, .product-item, .search-result, "
-        "[class*='product-card'], [class*='result-item']"
-    )
-    if not cards:
-        cards = soup.select("article, li.item")
+    cards = soup.find_all("a", class_="item")
 
     for card in cards:
-        title_el = card.select_one(
-            "h2, h3, h4, .product-title, .product-name, [class*='title'], [class*='name']"
-        )
+        title_el = card.select_one(".title")
         if not title_el:
             continue
         title = title_el.get_text(strip=True)
         if not title:
             continue
 
-        desc_el = card.select_one(".description, .product-description, p, [class*='desc']")
+        desc_el = card.select_one(".description")
         description = desc_el.get_text(strip=True) if desc_el else ""
 
-        # Must mention "signed" somewhere to stay in results
-        if "signed" not in title.lower() and "signed" not in description.lower():
+        # Must mention "signed" somewhere — title, description, or the .signed badge
+        signed_badge = card.select_one(".signed, .promo")
+        signed_badge_text = signed_badge.get_text(strip=True).lower() if signed_badge else ""
+        if "signed" not in title.lower() and "signed" not in description.lower() and "signed" not in signed_badge_text:
             continue
 
-        artist_el = card.select_one(".artist, .product-artist, [class*='artist']")
+        artist_el = card.select_one(".artist")
         artist = artist_el.get_text(strip=True) if artist_el else "Unknown"
 
         price_el = card.select_one(".price, [class*='price']")
@@ -561,11 +556,13 @@ async def scrape_banquet(page: Page) -> list[Listing]:
             image_url = img_el.get("src") or img_el.get("data-src")
             if image_url and image_url.startswith("//"):
                 image_url = "https:" + image_url
+            elif image_url and not image_url.startswith("http"):
+                image_url = BASE + "/" + image_url
 
-        link_el = card.select_one("a[href]")
-        product_url = link_el["href"] if link_el else None
+        # card itself is the <a> element
+        product_url = card.get("href")
         if product_url and not product_url.startswith("http"):
-            product_url = BASE + product_url
+            product_url = BASE + "/" + product_url
         if not product_url:
             continue
 
