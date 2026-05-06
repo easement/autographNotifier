@@ -233,6 +233,19 @@
   .fmt-btn:hover { color: var(--ink); border-color: var(--ink); }
   .fmt-btn--active { color: var(--paper); background: var(--ink); border-color: var(--ink); }
 
+  @media (max-width: 720px) {
+    .td-price { display: none; }
+    .site-title { font-size: 1.3rem; }
+    .header-count { display: none; }
+    .search-wrap { width: 170px; }
+    .date-label { font-size: 1.3rem; }
+    .header-inner { flex-wrap: wrap; height: auto; padding-top: 10px; padding-bottom: 0; }
+    .site-nav { display: flex; width: 100%; margin-left: 0; border-top: 1px solid var(--border-soft); margin-top: 6px; padding-top: 4px; padding-bottom: 4px; }
+    .nav-link { flex: 1; text-align: center; margin-left: 0; padding: 7px 4px; font-size: 0.65rem; }
+    .format-bar-inner { gap: 4px; padding: 5px 16px; }
+    .fmt-btn { font-size: 0.55rem; padding: 3px 8px; }
+  }
+
   /* ── Site nav ── */
   .site-nav {
     display: flex; gap: 0; margin-left: 16px; flex-shrink: 0;
@@ -249,30 +262,6 @@
   .nav-link:hover { color: var(--ink); border-color: var(--ink); z-index: 1; }
   .nav-link--active {
     color: var(--paper); background: var(--ink); border-color: var(--ink); z-index: 1;
-  }
-
-  /* ── Responsive ── */
-  @media (max-width: 720px) {
-    .td-price { display: none; }
-    .date-label { font-size: 1.3rem; }
-    .format-bar-inner { gap: 4px; padding: 5px 16px; }
-    .fmt-btn { font-size: 0.55rem; padding: 3px 8px; }
-
-    /* Two-row mobile header */
-    .header-inner {
-      flex-wrap: wrap;
-      height: auto;
-      padding: 10px 16px 0;
-      gap: 0;
-      row-gap: 8px;
-    }
-    .site-title { font-size: 1.3rem; flex: 1 0 100%; }
-    .header-meta { display: none; }
-    .header-count { display: none; }
-    .site-nav { display: flex; margin-left: 0; flex-shrink: 0; }
-    .nav-link { border-bottom: none; }
-    .search-wrap { flex: 1; width: auto; margin-left: 4px; margin-bottom: 0; }
-    .search-input { border-left: none; }
   }
 
 </style>
@@ -7186,7 +7175,7 @@
 </main>
 
 <footer class="site-footer">
-  Autograph Notifier &nbsp;·&nbsp; Generated May 06, 2026 at 09:27 PM
+  Autograph Notifier &nbsp;·&nbsp; Generated May 06, 2026 at 09:40 PM
 </footer>
 
 <script>
