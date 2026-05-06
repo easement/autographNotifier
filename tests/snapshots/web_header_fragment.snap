@@ -9,6 +9,6 @@
              spellcheck="false" aria-label="Search listings">
       <button type="button" id="searchClear" class="search-clear" aria-label="Clear">✕</button>
     </div>
-    <div class="header-count" id="headerCount">1 listings</div>
+    <div class="header-count" id="headerCount" aria-live="polite" aria-atomic="true">1 listings</div>
   </div>
 </header>

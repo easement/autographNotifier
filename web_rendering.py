@@ -143,9 +143,9 @@ def generate_html(listings: list[WebListingViewModel], page: str = "date") -> st
       <thead>
         <tr>
           <th class="th-thumb"></th>
-          <th class="th-sort" data-sort="title">Title / Artist</th>
-          <th class="th-sort" data-sort="shop">Shop</th>
-          <th class="th-sort" data-sort="price">Price</th>
+          <th class="th-sort" data-sort="title" aria-sort="none">Title / Artist</th>
+          <th class="th-sort" data-sort="shop" aria-sort="none">Shop</th>
+          <th class="th-sort" data-sort="price" aria-sort="none">Price</th>
           <th></th>
         </tr>
       </thead>
@@ -179,7 +179,7 @@ def generate_html(listings: list[WebListingViewModel], page: str = "date") -> st
     --ink:         #121212;
     --ink-2:       #2B2623;
     --ink-3:       #6B6358;
-    --ink-4:       #9B9180;
+    --ink-4:       #6B6358;
     --red:         #B91C1C;
     --red-deep:    #8F1414;
     --blue:        #1E3A8A;
@@ -423,7 +423,9 @@ def generate_html(listings: list[WebListingViewModel], page: str = "date") -> st
     .header-count {{ display: none; }}
     .search-wrap {{ width: 170px; }}
     .date-label {{ font-size: 1.3rem; }}
-    .site-nav {{ display: none; }}
+    .header-inner {{ flex-wrap: wrap; height: auto; padding-top: 10px; padding-bottom: 0; }}
+    .site-nav {{ display: flex; width: 100%; margin-left: 0; border-top: 1px solid var(--border-soft); margin-top: 6px; padding-top: 4px; padding-bottom: 4px; }}
+    .nav-link {{ flex: 1; text-align: center; margin-left: 0; padding: 7px 4px; font-size: 0.65rem; }}
     .format-bar-inner {{ gap: 4px; padding: 5px 16px; }}
     .fmt-btn {{ font-size: 0.55rem; padding: 3px 8px; }}
   }}
@@ -443,7 +445,7 @@ def generate_html(listings: list[WebListingViewModel], page: str = "date") -> st
              spellcheck="false" aria-label="Search listings">
       <button type="button" id="searchClear" class="search-clear" aria-label="Clear">✕</button>
     </div>
-    <div class="header-count" id="headerCount">{total} listings</div>
+    <div class="header-count" id="headerCount" aria-live="polite" aria-atomic="true">{total} listings</div>
   </div>
 </header>
 
@@ -454,9 +456,9 @@ def generate_html(listings: list[WebListingViewModel], page: str = "date") -> st
       <thead>
         <tr>
           <th class="th-thumb"></th>
-          <th class="th-sort" data-sort="title">Title / Artist</th>
-          <th class="th-sort" data-sort="shop">Shop</th>
-          <th class="th-sort" data-sort="price">Price</th>
+          <th class="th-sort" data-sort="title" aria-sort="none">Title / Artist</th>
+          <th class="th-sort" data-sort="shop" aria-sort="none">Shop</th>
+          <th class="th-sort" data-sort="price" aria-sort="none">Price</th>
           <th></th>
         </tr>
       </thead>
@@ -556,7 +558,7 @@ def generate_html(listings: list[WebListingViewModel], page: str = "date") -> st
     if (formats.length <= 1) return;
     const bar = document.createElement('div');
     bar.className = 'format-bar';
-    bar.innerHTML = '<div class="format-bar-inner">' +
+    bar.innerHTML = '<div class="format-bar-inner" role="group" aria-label="Filter by format">' +
       '<button class="fmt-btn fmt-btn--active" data-fmt="">All</button>' +
       formats.map(f => '<button class="fmt-btn" data-fmt="' + escHtml(f) + '">' + escHtml(f) + '</button>').join('') +
       '</div>';
@@ -591,8 +593,12 @@ def generate_html(listings: list[WebListingViewModel], page: str = "date") -> st
   function updateSortHeaders() {{
     document.querySelectorAll('.th-sort').forEach(th => {{
       th.classList.remove('sort-asc', 'sort-desc');
-      if (sortKey && th.dataset.sort === sortKey)
+      if (sortKey && th.dataset.sort === sortKey) {{
         th.classList.add(sortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+        th.setAttribute('aria-sort', sortDir === 'asc' ? 'ascending' : 'descending');
+      }} else {{
+        th.setAttribute('aria-sort', 'none');
+      }}
     }});
   }}
 
@@ -706,8 +712,8 @@ def generate_html_by_shop(listings: list[WebListingViewModel]) -> str:
       <thead>
         <tr>
           <th class="th-thumb"></th>
-          <th class="th-sort" data-sort="title">Title / Artist</th>
-          <th class="th-sort" data-sort="price">Price</th>
+          <th class="th-sort" data-sort="title" aria-sort="none">Title / Artist</th>
+          <th class="th-sort" data-sort="price" aria-sort="none">Price</th>
           <th></th>
         </tr>
       </thead>
@@ -740,7 +746,7 @@ def generate_html_by_shop(listings: list[WebListingViewModel]) -> str:
     --ink:         #121212;
     --ink-2:       #2B2623;
     --ink-3:       #6B6358;
-    --ink-4:       #9B9180;
+    --ink-4:       #6B6358;
     --red:         #B91C1C;
     --red-deep:    #8F1414;
     --blue:        #1E3A8A;
@@ -956,7 +962,9 @@ def generate_html_by_shop(listings: list[WebListingViewModel]) -> str:
     .header-count {{ display: none; }}
     .search-wrap {{ width: 170px; }}
     .date-label {{ font-size: 1.3rem; }}
-    .site-nav {{ display: none; }}
+    .header-inner {{ flex-wrap: wrap; height: auto; padding-top: 10px; padding-bottom: 0; }}
+    .site-nav {{ display: flex; width: 100%; margin-left: 0; border-top: 1px solid var(--border-soft); margin-top: 6px; padding-top: 4px; padding-bottom: 4px; }}
+    .nav-link {{ flex: 1; text-align: center; margin-left: 0; padding: 7px 4px; font-size: 0.65rem; }}
     .format-bar-inner {{ gap: 4px; padding: 5px 16px; }}
     .fmt-btn {{ font-size: 0.55rem; padding: 3px 8px; }}
   }}
@@ -976,7 +984,7 @@ def generate_html_by_shop(listings: list[WebListingViewModel]) -> str:
              spellcheck="false" aria-label="Search listings">
       <button type="button" id="searchClear" class="search-clear" aria-label="Clear">✕</button>
     </div>
-    <div class="header-count" id="headerCount">{total} listings</div>
+    <div class="header-count" id="headerCount" aria-live="polite" aria-atomic="true">{total} listings</div>
   </div>
 </header>
 
@@ -987,8 +995,8 @@ def generate_html_by_shop(listings: list[WebListingViewModel]) -> str:
       <thead>
         <tr>
           <th class="th-thumb"></th>
-          <th class="th-sort" data-sort="title">Title / Artist</th>
-          <th class="th-sort" data-sort="price">Price</th>
+          <th class="th-sort" data-sort="title" aria-sort="none">Title / Artist</th>
+          <th class="th-sort" data-sort="price" aria-sort="none">Price</th>
           <th></th>
         </tr>
       </thead>
@@ -1088,7 +1096,7 @@ def generate_html_by_shop(listings: list[WebListingViewModel]) -> str:
     if (formats.length <= 1) return;
     const bar = document.createElement('div');
     bar.className = 'format-bar';
-    bar.innerHTML = '<div class="format-bar-inner">' +
+    bar.innerHTML = '<div class="format-bar-inner" role="group" aria-label="Filter by format">' +
       '<button class="fmt-btn fmt-btn--active" data-fmt="">All</button>' +
       formats.map(f => '<button class="fmt-btn" data-fmt="' + escHtml(f) + '">' + escHtml(f) + '</button>').join('') +
       '</div>';
@@ -1122,8 +1130,12 @@ def generate_html_by_shop(listings: list[WebListingViewModel]) -> str:
   function updateSortHeaders() {{
     document.querySelectorAll('.th-sort').forEach(th => {{
       th.classList.remove('sort-asc', 'sort-desc');
-      if (sortKey && th.dataset.sort === sortKey)
+      if (sortKey && th.dataset.sort === sortKey) {{
         th.classList.add(sortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+        th.setAttribute('aria-sort', sortDir === 'asc' ? 'ascending' : 'descending');
+      }} else {{
+        th.setAttribute('aria-sort', 'none');
+      }}
     }});
   }}
 
