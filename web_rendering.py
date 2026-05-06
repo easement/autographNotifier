@@ -416,20 +416,22 @@ def generate_html(listings: list[WebListingViewModel], page: str = "date") -> st
   .fmt-btn:hover {{ color: var(--ink); border-color: var(--ink); }}
   .fmt-btn--active {{ color: var(--paper); background: var(--ink); border-color: var(--ink); }}
 
+{_NAV_CSS}
   /* ── Responsive ── */
   @media (max-width: 720px) {{
     .td-shop, .td-price {{ display: none; }}
-    .site-title {{ font-size: 1.3rem; }}
-    .header-count {{ display: none; }}
-    .search-wrap {{ width: 170px; }}
     .date-label {{ font-size: 1.3rem; }}
-    .header-inner {{ flex-wrap: wrap; height: auto; padding-top: 10px; padding-bottom: 0; }}
-    .site-nav {{ display: flex; width: 100%; margin-left: 0; border-top: 1px solid var(--border-soft); margin-top: 6px; padding-top: 4px; padding-bottom: 4px; }}
-    .nav-link {{ flex: 1; text-align: center; margin-left: 0; padding: 7px 4px; font-size: 0.65rem; }}
     .format-bar-inner {{ gap: 4px; padding: 5px 16px; }}
     .fmt-btn {{ font-size: 0.55rem; padding: 3px 8px; }}
+    .header-inner {{ flex-wrap: wrap; height: auto; padding: 10px 16px 0; gap: 0; row-gap: 8px; }}
+    .site-title {{ font-size: 1.3rem; flex: 1 0 100%; }}
+    .header-meta {{ display: none; }}
+    .header-count {{ display: none; }}
+    .site-nav {{ display: flex; margin-left: 0; flex-shrink: 0; }}
+    .nav-link {{ border-bottom: none; }}
+    .search-wrap {{ flex: 1; width: auto; margin-left: 4px; }}
+    .search-input {{ border-left: none; }}
   }}
-{_NAV_CSS}
 </style>
 </head>
 <body>
@@ -956,19 +958,22 @@ def generate_html_by_shop(listings: list[WebListingViewModel]) -> str:
   .fmt-btn:hover {{ color: var(--ink); border-color: var(--ink); }}
   .fmt-btn--active {{ color: var(--paper); background: var(--ink); border-color: var(--ink); }}
 
+{_NAV_CSS}
+  /* ── Responsive ── */
   @media (max-width: 720px) {{
     .td-price {{ display: none; }}
-    .site-title {{ font-size: 1.3rem; }}
-    .header-count {{ display: none; }}
-    .search-wrap {{ width: 170px; }}
     .date-label {{ font-size: 1.3rem; }}
-    .header-inner {{ flex-wrap: wrap; height: auto; padding-top: 10px; padding-bottom: 0; }}
-    .site-nav {{ display: flex; width: 100%; margin-left: 0; border-top: 1px solid var(--border-soft); margin-top: 6px; padding-top: 4px; padding-bottom: 4px; }}
-    .nav-link {{ flex: 1; text-align: center; margin-left: 0; padding: 7px 4px; font-size: 0.65rem; }}
     .format-bar-inner {{ gap: 4px; padding: 5px 16px; }}
     .fmt-btn {{ font-size: 0.55rem; padding: 3px 8px; }}
+    .header-inner {{ flex-wrap: wrap; height: auto; padding: 10px 16px 0; gap: 0; row-gap: 8px; }}
+    .site-title {{ font-size: 1.3rem; flex: 1 0 100%; }}
+    .header-meta {{ display: none; }}
+    .header-count {{ display: none; }}
+    .site-nav {{ display: flex; margin-left: 0; flex-shrink: 0; }}
+    .nav-link {{ border-bottom: none; }}
+    .search-wrap {{ flex: 1; width: auto; margin-left: 4px; }}
+    .search-input {{ border-left: none; }}
   }}
-{_NAV_CSS}
 </style>
 </head>
 <body>
