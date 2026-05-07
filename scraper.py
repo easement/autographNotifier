@@ -500,7 +500,28 @@ async def scrape_sgrecordshop(page: Page) -> list[Listing]:
 
 # ─── Banquet Records ──────────────────────────────────────────────────────────
 
-async def scrape_banquet(page: Page) -> list[Listing]:
+async def _banquet_has_available_signed_format(url: str, client: httpx.AsyncClient) -> bool:
+    """Return True if the product page has at least one signed format that is not sold out."""
+    try:
+        r = await client.get(url, timeout=15)
+        r.raise_for_status()
+    except Exception:
+        return True  # assume available on fetch failure to avoid false negatives
+    soup = BeautifulSoup(r.text, "html.parser")
+    for row in soup.select("div.row.format"):
+        name_text = row.select_one(".name")
+        if not name_text:
+            continue
+        overlay = name_text.select_one(".overlay")
+        if not overlay or "signed" not in overlay.get_text(strip=True).lower():
+            continue
+        options_el = row.select_one(".options")
+        if options_el and options_el.select_one("a"):
+            return True
+    return False
+
+
+async def scrape_banquet(page: Page, client: httpx.AsyncClient) -> list[Listing]:
     """Search results for 'signed'; post-filter to ensure signed items only."""
     BASE = "https://www.banquetrecords.com"
     url = f"{BASE}/search?q=signed&t=signed"
@@ -564,6 +585,9 @@ async def scrape_banquet(page: Page) -> list[Listing]:
         if product_url and not product_url.startswith("http"):
             product_url = BASE + "/" + product_url
         if not product_url:
+            continue
+
+        if not await _banquet_has_available_signed_format(product_url, client):
             continue
 
         fmt, signed_by, sig_loc = parse_signed_metadata(title, description)
@@ -1381,7 +1405,7 @@ async def run_scraper():
                 scrape_parkave(client),
                 scrape_3hive(client, hive_page),
                 scrape_sgrecordshop(sg_page),
-                scrape_banquet(banquet_page),
+                scrape_banquet(banquet_page, client),
                 scrape_nailcityrecord(client),
                 scrape_darksiderecords(client),
                 scrape_assai(client),
