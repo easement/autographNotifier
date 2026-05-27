@@ -223,6 +223,11 @@ class TestRoughTrade(unittest.IsolatedAsyncioTestCase):
         listings = await scrape_roughtrade(_scroll_page_mock(html))
         self.assertEqual(len(listings), 1)
 
+    async def test_skips_unsigned_items(self):
+        html = f"<html><body>{_rt_card(title='Deluxe Edition LP')}</body></html>"
+        listings = await scrape_roughtrade(_scroll_page_mock(html))
+        self.assertEqual(listings, [])
+
 
 # ─── Looney Tunes Long Island ─────────────────────────────────────────────────
 

@@ -890,6 +890,9 @@ async def scrape_roughtrade(page: Page) -> list[Listing]:
         if not title:
             continue
 
+        if "signed" not in title.lower() and "autograph" not in title.lower():
+            continue
+
         artist_el = card.select_one("[class*='hitArtists']")
         artist = artist_el.get_text(strip=True) if artist_el else "Unknown"
 
